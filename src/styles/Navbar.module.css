@@ -144,15 +144,13 @@
 }
 
 .logout {
-  color: #1d1d1f;
-  font-weight: 600;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  color: #ff3b30;
   padding-top: 10px;
 }
 
 .logout:hover {
-  background: #f5f5f7;
-  color: #000;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -182,23 +180,21 @@
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
   }
+}
 
+.verticalLine {
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.05);
+  margin: 2px 0;
+}
+
+@media (prefers-color-scheme: dark) {
   .verticalLine {
-    width: 100%;
-    height: 1px;
     background: rgba(255, 255, 255, 0.08);
-    margin: 4px 0;
-  }
-
-  .logout {
-    color: #ff3b30;
-  }
-  
-  .logout:hover {
-    background: rgba(255, 59, 48, 0.15);
-    color: #ff3b30;
   }
 }
+
 
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px) scale(0.95); }

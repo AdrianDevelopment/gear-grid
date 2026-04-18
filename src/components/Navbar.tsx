@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import AuthModal from "./AuthModal";
 import styles from "../styles/Navbar.module.css";
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
+  const [listName, setListName] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -22,6 +25,27 @@ export default function Navbar() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Dynamischer Titel basierend auf der aktuellen Liste
+  useEffect(() => {
+    const fetchTitle = async () => {
+      if (pathname.startsWith("/list/")) {
+        const id = pathname.split("/").pop();
+        if (id) {
+          const { data } = await supabase
+            .from("packing_lists")
+            .select("name")
+            .eq("id", id)
+            .single();
+          if (data) setListName(data.name);
+        }
+      } else {
+        setListName("");
+      }
+    };
+
+    fetchTitle();
+  }, [pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,7 +66,7 @@ export default function Navbar() {
     <>
       <header className={styles.navbar}>
         <div className={styles.left}>
-          <span className={styles.title}>4 Tage Hüttentour</span>
+          <span className={styles.title}>{listName}</span>
         </div>
 
         <div className={styles.right}>

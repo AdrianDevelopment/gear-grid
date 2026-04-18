@@ -65,14 +65,13 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const totalWeight = items.reduce((sum, i) => sum + (i.weight * i.count), 0);
   const totalPrice = items.reduce((sum, i) => sum + (Number(i.price) * i.count), 0);
 
-  if (loading) return <p>Wird geladen...</p>;
+  if (loading) return null; // Verhindert das kurze Aufblitzen von Text während des Ladens
   if (!list) return <p>Liste nicht gefunden.</p>;
 
   return (
     <div className={listStyles.listPage}>
       <header className={listStyles.header}>
         <div className={listStyles.titleSection}>
-          <h1>{list.name}</h1>
           <div className={listStyles.stats}>
             <span>{items.length} Gegenstände</span>
             <span>{totalWeight / 1000} kg Gesamtgewicht</span>

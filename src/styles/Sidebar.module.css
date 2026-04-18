@@ -178,6 +178,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
+  font-family: inherit;
 }
 
 .cancelButton {
