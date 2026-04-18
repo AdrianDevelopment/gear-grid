@@ -5,17 +5,24 @@
   --text-primary: #000;
   --text-secondary: #666;
 
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
-
   min-height: 100vh;
+  height: 100vh; /* Fest auf Bildschirmhöhe */
   display: grid;
   grid-template-columns: 280px 1fr;
   grid-template-rows: 56px 1fr;
   font-family: var(--font-geist-sans);
-  overflow: hidden;
+  overflow: hidden; /* Verhindert Scrollen der gesamten Seite */
   position: relative;
+}
+
+.sidebar {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  height: 100vh; /* Immer volle Höhe */
+  position: sticky;
+  top: 0;
+  left: 0;
+  overflow: hidden; /* Die Sidebar selbst scrollt nicht, nur die Liste darin (in Sidebar.module.css geregelt) */
 }
 
 .parallaxBackground {

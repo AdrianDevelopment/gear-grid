@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import ModalPortal from "./ModalPortal";
 import styles from "../styles/Sidebar.module.css";
 
 interface Packliste {
@@ -269,28 +270,30 @@ export default function Sidebar() {
 
       {/* Custom Confirmation Modal */}
       {listToDelete && (
-        <div className={styles.modalOverlay} onClick={() => setListToDelete(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>Liste löschen?</h3>
-            <p className={styles.modalText}>
-              Bist du sicher, dass du die Liste <strong>"{listToDelete.name}"</strong> unwiderruflich löschen möchtest?
-            </p>
-            <div className={styles.modalButtons}>
-              <button 
-                className={`${styles.modalButton} ${styles.cancelButton}`}
-                onClick={() => setListToDelete(null)}
-              >
-                Abbrechen
-              </button>
-              <button 
-                className={`${styles.modalButton} ${styles.confirmDeleteButton}`}
-                onClick={confirmDelete}
-              >
-                Löschen
-              </button>
+        <ModalPortal>
+          <div className={styles.modalOverlay} onClick={() => setListToDelete(null)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>Liste löschen?</h3>
+              <p className={styles.modalText}>
+                Bist du sicher, dass du die Liste <strong>"{listToDelete.name}"</strong> unwiderruflich löschen möchtest?
+              </p>
+              <div className={styles.modalButtons}>
+                <button 
+                  className={`${styles.modalButton} ${styles.cancelButton}`}
+                  onClick={() => setListToDelete(null)}
+                >
+                  Abbrechen
+                </button>
+                <button 
+                  className={`${styles.modalButton} ${styles.confirmDeleteButton}`}
+                  onClick={confirmDelete}
+                >
+                  Löschen
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );
