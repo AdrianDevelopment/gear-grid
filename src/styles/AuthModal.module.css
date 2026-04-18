@@ -132,8 +132,8 @@
 }
 
 .success {
-  background: rgba(52, 199, 89, 0.1);
-  color: #34c759;
+  background: rgba(52, 199, 89, 0.18);
+  color: #279245;
   padding: 12px;
   border-radius: 10px;
   font-size: 0.85rem;
