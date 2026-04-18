@@ -1,64 +1,71 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import { useEffect, useRef } from "react";
+import styles from "../styles/page.module.css";
+import Navbar from "../components/Navbar";
+import Sidebar from "../components/Sidebar";
 
 export default function Home() {
+  const bgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Aktuelle Position des Hintergrunds
+    let currentX = 0;
+    let currentY = 0;
+    // Zielposition basierend auf der Maus
+    let targetX = 0;
+    let targetY = 0;
+    let animationFrameId: number;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // 1. Normalisieren: Mausposition von -1 (links/oben) bis 1 (rechts/unten). Mitte ist 0.
+      const normX = (e.clientX / window.innerWidth) * 2 - 1;
+      const normY = (e.clientY / window.innerHeight) * 2 - 1;
+
+      // 2. Die "Edge-Acceleration" (Beschleunigung am Rand):
+      // Durch das Potenzieren (Math.pow) wird die Kurve nicht-linear. 
+      // Ein Wert von 0.2 in der Mitte bleibt klein, ein Wert von 0.9 am Rand explodiert förmlich.
+      targetX = Math.sign(normX) * Math.pow(Math.abs(normX), 1.8);
+      targetY = Math.sign(normY) * Math.pow(Math.abs(normY), 1.8);
+    };
+
+    const animate = () => {
+      // 3. LERP (Linear Interpolation) für die samtweiche Trägheit
+      // 0.06 ist der "Friction"-Wert. Je kleiner, desto mehr "schwebt" das Bild nach.
+      currentX += (targetX - currentX) * 0.06;
+      currentY += (targetY - currentY) * 0.06;
+
+      if (bgRef.current) {
+        // 40px ist die maximale Auslenkung in jede Richtung
+        bgRef.current.style.transform = `translate(${currentX * -40}px, ${currentY * -40}px)`;
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    animate(); // Startet den 60fps Animations-Loop
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
   return (
     <div className={styles.page}>
+      {/* Das Hintergrund-Div bekommt jetzt das Ref */}
+      <div 
+        ref={bgRef}
+        className={styles.parallaxBackground} 
+      />
+      
+      <Navbar />
+      <Sidebar />
       <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className={styles.contentBox}>
+          <h2>Main Content</h2>
+          <p>This is the main content area.</p>
         </div>
       </main>
     </div>
