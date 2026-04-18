@@ -299,7 +299,11 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
               <div className={listStyles.addItemRow}>
                 <div className={listStyles.checkbox} style={{ opacity: 0.2, cursor: 'default' }}>+</div>
                 <input 
-                  ref={el => nameInputRefs.current[cat.id] = el}
+                  ref={(el) => {
+                    if (nameInputRefs.current) {
+                      nameInputRefs.current[cat.id] = el;
+                    }
+                  }}
                   className={listStyles.addInput} 
                   placeholder="Gegenstand..." 
                   value={newItemNames[cat.id] || ""}
