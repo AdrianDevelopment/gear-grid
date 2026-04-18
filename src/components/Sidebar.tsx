@@ -20,7 +20,11 @@ export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
   
   // Custom Modal State
-  const [listToDelete, setListToDelete] = useState<Packliste | null>(null);
+  // const [listToDelete, setListToDelete] = useState<Packliste | null>(null);
+  const [modalConfig, setModalConfig] = useState<{
+    type: "delete" | "auth";
+    list?: Packliste;
+  } | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -87,7 +91,7 @@ export default function Sidebar() {
 
   const handleAddClick = () => {
     if (!user) {
-      alert("Bitte melde dich zuerst an!");
+      setModalConfig({ type: "auth" });
       return;
     }
     setIsAdding(true);
@@ -147,36 +151,40 @@ export default function Sidebar() {
   const openDeleteModal = (e: React.MouseEvent, list: Packliste) => {
     e.preventDefault();
     e.stopPropagation();
-    setListToDelete(list);
+    setModalConfig({ type: "delete", list });
   };
 
   const confirmDelete = async () => {
-    if (!listToDelete) return;
+    const list = modalConfig?.list;
+    if (!list) return;
 
     const { error } = await supabase
       .from("packing_lists")
       .delete()
-      .eq("id", listToDelete.id);
+      .eq("id", list.id);
 
-    if (error) {
-      console.error("Error deleting list:", error);
-      alert("Fehler beim Löschen der Liste.");
-    } else {
-      setLists(lists.filter((l) => l.id !== listToDelete.id));
-      if (pathname === `/list/${listToDelete.id}`) {
+    if (!error) {
+      setLists(lists.filter((l) => l.id !== list.id));
+      if (pathname === `/list/${list.id}`) {
         router.push("/");
       }
     }
-    setListToDelete(null);
+    setModalConfig(null); // Modal schließen
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
-    if (e.key === "Enter") action();
-    if (e.key === "Escape") {
-      setIsAdding(false);
-      setEditingId(null);
-      setTempName("");
-      setListToDelete(null);
+    if (e.key === "Enter") {
+      action();
+    } else if (e.key === "Escape") {
+      // Wenn ein Modal offen ist, schließe nur das Modal
+      if (modalConfig) {
+        setModalConfig(null);
+      } else {
+        // Ansonsten brich das Hinzufügen/Editieren ab
+        setIsAdding(false);
+        setEditingId(null);
+        setTempName("");
+      }
     }
   };
 
@@ -274,28 +282,47 @@ export default function Sidebar() {
       </aside>
 
       {/* Custom Confirmation Modal */}
-      {listToDelete && (
+      {modalConfig && (
         <ModalPortal>
-          <div className={styles.modalOverlay} onClick={() => setListToDelete(null)}>
+          <div className={styles.modalOverlay} onClick={() => setModalConfig(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <h3 className={styles.modalTitle}>Liste löschen?</h3>
-              <p className={styles.modalText}>
-                Bist du sicher, dass du die Liste <strong>"{listToDelete.name}"</strong> unwiderruflich löschen möchtest?
-              </p>
-              <div className={styles.modalButtons}>
-                <button 
-                  className={`${styles.modalButton} ${styles.cancelButton}`}
-                  onClick={() => setListToDelete(null)}
-                >
-                  Abbrechen
-                </button>
-                <button 
-                  className={`${styles.modalButton} ${styles.confirmDeleteButton}`}
-                  onClick={confirmDelete}
-                >
-                  Löschen
-                </button>
-              </div>
+              
+              {modalConfig.type === "delete" ? (
+                <>
+                  <h3 className={styles.modalTitle}>Liste löschen?</h3>
+                  <p className={styles.modalText}>
+                    Bist du sicher, dass du die Liste <strong>"{modalConfig.list?.name}"</strong> unwiderruflich löschen möchtest?
+                  </p>
+                  <div className={styles.modalButtons}>
+                    <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={() => setModalConfig(null)}>
+                      Abbrechen
+                    </button>
+                    <button className={`${styles.modalButton} ${styles.confirmDeleteButton}`} onClick={confirmDelete}>
+                      Löschen
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className={styles.modalTitle}>Anmeldung erforderlich</h3>
+                  <p className={styles.modalText}>
+                    Du musst angemeldet sein, um neue Packlisten zu erstellen.
+                  </p>
+                  <div className={styles.modalButtons}>
+                    <button 
+                      className={`${styles.modalButton} ${styles.confirmDeleteButton}`} 
+                      style={{ background: "#007AFF", boxShadow: "none" }} // Blau statt Rot für Login
+                      onClick={() => {
+                        setModalConfig(null);
+                        router.push("/"); // Optional: Direkt zum Login leiten
+                      }}
+                    >
+                      Verstanden
+                    </button>
+                  </div>
+                </>
+              )}
+
             </div>
           </div>
         </ModalPortal>

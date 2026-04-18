@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import AuthModal from "./AuthModal";
 import styles from "../styles/Navbar.module.css";
 
 export default function Navbar() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [listName, setListName] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -85,6 +86,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsDropdownOpen(false);
+    router.push("/");
   };
 
   return (

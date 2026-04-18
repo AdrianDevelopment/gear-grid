@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import ModalPortal from "../../../components/ModalPortal";
 import listStyles from "../../../styles/ListDetail.module.css";
+import { useRouter } from "next/navigation";
 
 interface Category {
   id: string;
@@ -28,6 +29,7 @@ const CATEGORY_COLORS = [
 ];
 
 export default function ListDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const resolvedParams = use(params);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -43,7 +45,31 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const [newItemCounts, setNewItemCounts] = useState<{ [catId: string]: string }>({});
   const [newItemPrices, setNewItemPrices] = useState<{ [catId: string]: string }>({});
 
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
   const nameInputRefs = useRef<{ [catId: string]: HTMLInputElement | null }>({});
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/");
+      } else {
+        setIsAuthorized(true); // Nur wenn Session da ist, erlauben wir das Anzeigen
+      }
+    };
+
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setIsAuthorized(false);
+        router.push("/");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     fetchData();
@@ -187,7 +213,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }).filter(d => d.value > 0);
   }, [categories, items]); // Berechnen, wenn Kategorien oder Items sich ändern
 
-  if (loading) return null;
+  if (loading || !isAuthorized) return null;
 
   return (
     <div className={listStyles.listPage}>
