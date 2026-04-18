@@ -1,10 +1,31 @@
+/* Diese Klasse regelt das Layout zwischen dem "Passwort"-Label und dem "Vergessen?"-Link */
+.passwordHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forgotPasswordLink {
+  all: unset;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #007AFF; /* Ein lebendiges, helleres iOS-Blau für Darkmode, das kontrastiert */
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.forgotPasswordLink:hover {
+  opacity: 0.7;
+}
+
 .overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
+  /* Beibehaltung des Overlays, da es bereits dunkel ist. Wir deepening es für mehr Kontrast */
+  background: rgba(0, 0, 0, 0.5);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   display: flex;
@@ -17,13 +38,16 @@
 .modal {
   width: 100%;
   max-width: 400px;
-  background: rgba(255, 255, 255, 0.7);
+  /* Umstellung auf dunklen Hintergrund, ähnlich dem gezeigten Fenster */
+  background: rgba(20, 20, 22, 0.95);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  /* Subtile, hellere Kante auf dunklem Grund */
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   padding: 40px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  /* Tieferer Schatten für dunkles Modal auf dunklem Overlay */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -37,13 +61,15 @@
 .title {
   font-size: 1.6rem;
   font-weight: 700;
-  color: #1d1d1f;
+  /* Reiner, heller Text auf dunklem Grund */
+  color: #fff;
   margin-bottom: 8px;
 }
 
 .subtitle {
   font-size: 0.9rem;
-  color: rgba(29, 29, 31, 0.6);
+  /* Abgetönter weißer Text */
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .form {
@@ -61,30 +87,39 @@
 .label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: rgba(29, 29, 31, 0.8);
+  /* Hellgrauer Text für Labels */
+  color: rgba(255, 255, 255, 0.8);
   padding-left: 4px;
 }
 
 .input {
   all: unset;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  /* Dunklere Eingabefelder */
+  background: rgba(30, 30, 33, 0.8);
+  /* Subtile dunkle Kante */
+  border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 15px;
-  color: #1d1d1f;
+  /* Reiner weißer Text für Eingaben */
+  color: #fff;
   transition: all 0.2s ease;
 }
 
 .input:focus {
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.03);
+  /* Brighter translucent weißer Füllgrad bei Fokus */
+  background: rgba(255, 255, 255, 0.08);
+  /* Hellere Kante bei Fokus */
+  border-color: rgba(255, 255, 255, 0.1);
+  /* Ein subtiler weißer Glüheffekt (Ring) */
+  /* box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.03); */
 }
 
 .submitButton {
   all: unset;
-  background: #1d1d1f;
+  /* Umstellung auf den Rotton des "Löschen"-Buttons für principal Aktion */
+  background: rgb(0, 122, 255);
+  /* Text bleibt weiß */
   color: #fff;
   padding: 14px;
   border-radius: 12px;
@@ -96,9 +131,9 @@
 }
 
 .submitButton:hover {
-  background: #000;
+  background: rgb(0, 122, 255, 0.8);
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .submitButton:disabled {
@@ -110,12 +145,14 @@
 .switchMode {
   text-align: center;
   font-size: 0.85rem;
-  color: rgba(29, 29, 31, 0.6);
+  /* Abgetönter weißer Text */
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .switchButton {
   all: unset;
-  color: #1d1d1f;
+  /* Reiner weißer Text für den unterstrichenen Link */
+  color: #fff;
   font-weight: 600;
   cursor: pointer;
   margin-left: 4px;
@@ -123,7 +160,9 @@
 }
 
 .error {
-  background: rgba(255, 59, 48, 0.1);
+  /* Roterer Hintergrund im Darkmode */
+  background: rgba(255, 59, 48, 0.2);
+  /* Hellerer Roterer Text */
   color: #ff3b30;
   padding: 12px;
   border-radius: 10px;
@@ -132,7 +171,9 @@
 }
 
 .success {
-  background: rgba(52, 199, 89, 0.18);
+  /* Grünerer Hintergrund im Darkmode */
+  background: rgba(52, 199, 89, 0.25);
+  /* Hellerer Grüner Text */
   color: #279245;
   padding: 12px;
   border-radius: 10px;
@@ -148,4 +189,39 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInput {
+  width: 100%;
+  padding-right: 48px !important; /* Platz für das Auge lassen */
+}
+
+.eyeButton {
+  all: unset;
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.eyeButton:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Verhindert, dass der Blaue Standard-Rahmen beim Button-Klick stört */
+.eyeButton:focus {
+  outline: none;
 }

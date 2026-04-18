@@ -7,8 +7,6 @@
   overflow: hidden;
 }
 
-
-
 .topSection {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -45,9 +43,9 @@
 }
 
 .summaryLabel {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: rgba(29, 29, 31, 0.4); /* Etwas dunkler für bessere Lesbarkeit */
+  color: rgb(29, 29, 31, 0.9);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -74,7 +72,6 @@
   box-shadow: 0 0 12px rgba(52, 199, 89, 0.3);
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 
 .scrollContainer {
   flex: 1;
@@ -111,7 +108,7 @@
 }
 
 .categoryTitle {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 800;
   margin: 0;
   white-space: nowrap;
@@ -134,7 +131,7 @@
 .headerLabel {
   font-size: 0.8rem;
   font-weight: 700;
-  color: rgba(29, 29, 31, 0.35); /* Besser lesbar */
+  color: rgba(29, 29, 31, 0.7); /* Besser lesbar */
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-align: right;
@@ -152,7 +149,7 @@
   display: grid;
   grid-template-columns: 44px 1fr 100px 80px 100px 44px;
   align-items: center;
-  padding: 16px 20px;
+  padding: 11px 20px; /* niedrigere divs */
   background: rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 20px;
@@ -212,7 +209,7 @@
   display: grid;
   grid-template-columns: 44px 1fr 100px 80px 100px 44px;
   align-items: center;
-  padding: 12px 20px;
+  padding: 10px 20px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px dashed rgba(0, 0, 0, 0.1);
   border-radius: 20px;
@@ -292,18 +289,25 @@
   /* box-shadow: 0 6px 16px rgba(52, 199, 89, 0.4); */
 }
 
+.addCategoryContainer {
+  position: relative; /* Wichtig für die absolute Positionierung des Buttons */
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
 .addCategoryInput {
   all: unset;
   background: rgba(255, 255, 255, 0.2);
   border: 1px dashed rgba(0, 0, 0, 0.1);
-  padding: 20px 28px;
-  border-radius: 24px;
+  padding: 16px 28px;
+  padding-right: 64px; /* Platz für den Button lassen */
+  border-radius: 20px;
   font-weight: 800;
   color: #1d1d1f;
   width: 100%;
   box-sizing: border-box;
   transition: all 0.3s ease;
-  cursor: pointer;
   font-size: 1.1rem;
 }
 
@@ -312,6 +316,32 @@
   border-style: solid;
   border-color: rgba(0, 0, 0, 0.1);
   cursor: text;
+}
+
+.confirmAddCategoryButton {
+  all: unset;
+  position: absolute;
+  right: 28px; /* Abstand vom rechten Rand des Inputs */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(29, 29, 31, 0.6);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.confirmAddCategoryButton:hover {
+  transform: scale(1.15);
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.confirmAddCategoryButton:active {
+  transform: scale(0.95);
 }
 
 /* Modal Styles */

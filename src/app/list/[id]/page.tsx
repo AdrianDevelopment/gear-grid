@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use, useRef, useMemo } from "react";
 import { supabase } from "../../../lib/supabase";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from "recharts";
 import ModalPortal from "../../../components/ModalPortal";
 import listStyles from "../../../styles/ListDetail.module.css";
 import { useRouter } from "next/navigation";
@@ -25,7 +25,16 @@ interface Item {
 }
 
 const CATEGORY_COLORS = [
-  "#5856D6", "#007AFF", "#34C759", "#FF9500", "#FF3B30", "#AF52DE", "#5AC8FA", "#FF2D55"
+  "#5856D6", // Indigo
+  "#007AFF", // Blue
+  "#34C759", // Green
+  "#FF2D55", // Pink
+  "#FF9500", // Orange
+  "#AF52DE", // Purple
+  "#5AC8FA", // Sky
+  "#FF3B30", // Red
+  "#64D2FF", // Teal
+  "#FFCC00"  // Gold
 ];
 
 export default function ListDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -231,8 +240,24 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   stroke="none"
                 >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell 
+                      key={`cell-${index}`}
+                      fill={entry.color}
+                      fillOpacity={0.8} // Macht das Chart selbst leicht glasig
+                      stroke="rgba(255,255,255,0.2)" // Subtile Kante
+                      strokeWidth={1}
+                    />
                   ))}
+                <Label 
+                  value={`Gewicht`} 
+                  position="center" 
+                  fill="#1d1d1f"
+                  style={{
+                    fontSize: '1.6rem',
+                    fontWeight: '800',
+                    fontFamily: 'inherit'
+                  }}
+                />
                 </Pie>
                 <Tooltip 
                   formatter={(value, name) => [`${(Number(value) / 1000).toFixed(2)} kg`, name]}
@@ -331,7 +356,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                     }
                   }}
                   className={listStyles.addInput} 
-                  placeholder="Gegenstand..." 
+                  placeholder="Gegenstand hinzufügen" 
                   value={newItemNames[cat.id] || ""}
                   onChange={(e) => setNewItemNames({ ...newItemNames, [cat.id]: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
@@ -373,11 +398,22 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         <div className={listStyles.addCategoryContainer}>
           <input 
             className={listStyles.addCategoryInput} 
-            placeholder="+ Neue Kategorie erstellen..." 
+            placeholder="Neue Kategorie erstellen" 
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCategory()}
           />
+          <button 
+            type="button"
+            className={listStyles.confirmAddCategoryButton} 
+            onClick={addCategory}
+            title="Kategorie hinzufügen"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
         </div>
       </div>
 
