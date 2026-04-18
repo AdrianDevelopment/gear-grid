@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { supabase } from "../lib/supabase";
 import styles from "../styles/Sidebar.module.css";
 
 interface Packliste {
@@ -10,20 +11,35 @@ interface Packliste {
   name: string;
 }
 
-// const INITIAL_LISTS: Packliste[] = [
-//   { id: "1", name: "4 Tage Hüttentour" },
-//   { id: "2", name: "Zugspitze" },
-//   { id: "3", name: "3 Tage Hüttentour" },
-//   { id: "4", name: "Theoretisch Zelten" },
-// ];
-
 export default function Sidebar() {
   const [lists, setLists] = useState<Packliste[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
+  const [user, setUser] = useState<any>(null);
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchLists();
+    } else {
+      setLists([]);
+    }
+  }, [user]);
 
   useEffect(() => {
     if ((isAdding || editingId) && inputRef.current) {
@@ -32,18 +48,45 @@ export default function Sidebar() {
     }
   }, [isAdding, editingId]);
 
+  const fetchLists = async () => {
+    const { data, error } = await supabase
+      .from("packing_lists")
+      .select("*")
+      .order("created_at", { ascending: true });
+    
+    if (error) {
+      console.error("Error fetching lists:", error);
+    } else {
+      setLists(data || []);
+    }
+  };
+
   const handleAddClick = () => {
+    if (!user) {
+      // Wir könnten hier einen Event-Emitter oder ein globales State nutzen,
+      // um das Modal in der Navbar zu öffnen. Für jetzt zeigen wir eine Warnung.
+      alert("Bitte melde dich zuerst an!");
+      return;
+    }
     setIsAdding(true);
     setTempName("");
   };
 
-  const saveNewList = () => {
+  const saveNewList = async () => {
     const finalName = tempName.trim() || `Liste ${lists.length + 1}`;
-    const newList = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: finalName,
-    };
-    setLists([...lists, newList]);
+    
+    const { data, error } = await supabase
+      .from("packing_lists")
+      .insert([{ name: finalName, user_id: user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating list:", error);
+    } else if (data) {
+      setLists([...lists, data]);
+    }
+    
     setIsAdding(false);
     setTempName("");
   };
@@ -53,13 +96,22 @@ export default function Sidebar() {
     setTempName(list.name);
   };
 
-  const saveRename = () => {
+  const saveRename = async () => {
     if (editingId) {
-      setLists(
-        lists.map((l) =>
-          l.id === editingId ? { ...l, name: tempName.trim() || l.name } : l
-        )
-      );
+      const { error } = await supabase
+        .from("packing_lists")
+        .update({ name: tempName.trim() })
+        .eq("id", editingId);
+
+      if (error) {
+        console.error("Error updating list:", error);
+      } else {
+        setLists(
+          lists.map((l) =>
+            l.id === editingId ? { ...l, name: tempName.trim() || l.name } : l
+          )
+        );
+      }
       setEditingId(null);
       setTempName("");
     }
@@ -82,7 +134,7 @@ export default function Sidebar() {
         <div className={styles.scrollArea}>
           <nav className={styles.nav}>
             {lists.map((list) => {
-              const isActive = pathname === `/list/${list.id}` || list.name === "4 Tage Hüttentour";
+              const isActive = pathname === `/list/${list.id}`;
               
               if (editingId === list.id) {
                 return (
