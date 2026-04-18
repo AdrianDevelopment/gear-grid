@@ -58,6 +58,9 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
   const nameInputRefs = useRef<{ [catId: string]: HTMLInputElement | null }>({});
 
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [tempValue, setTempValue] = useState<string>("");
+
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -178,6 +181,28 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const updateItemField = async (item: Item, field: string, value: string | number) => {
+    setEditingCell(null);
+
+    // Wichtig: Vergleich nach Typ-Konvertierung
+    const formattedValue = (field === "name") ? value : Number(value);
+    if (item[field as keyof Item] === formattedValue) return;
+
+    // Lokaler State-Update (Optimistic UI)
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, [field]: formattedValue } : i));
+
+    // Supabase Update im Hintergrund
+    const { error } = await supabase
+      .from("packing_items")
+      .update({ [field]: formattedValue })
+      .eq("id", item.id);
+
+    if (error) {
+      console.error("Update Fehler:", error);
+      fetchData(); // Bei Fehler Daten neu laden, um inkonsistenten State zu fixen
+    }
+  };
+
   const confirmDeleteItem = async () => {
     if (!itemToDelete) return;
     
@@ -198,19 +223,15 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const { totalWeight, totalPrice, totalItems, packedItems, progress } = useMemo(() => {
     console.log("Berechne Zusammenfassung neu..."); // Zum Testen im Browser-Log
 
-    const weight = items.reduce((sum, i) => sum + (i.weight * i.count), 0);
-    const price = items.reduce((sum, i) => sum + (Number(i.price) * i.count), 0);
-    const total = items.reduce((sum, i) => sum + i.count, 0);
-    const packed = items.filter(i => i.is_packed).reduce((sum, i) => sum + i.count, 0);
+    const weight = items.reduce((sum, i) => sum + (Number(i.weight) * Number(i.count)), 0);
+    const price = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.count)), 0);
+    const total = items.reduce((sum, i) => sum + Number(i.count), 0);
+    const packed = items
+      .filter(i => i.is_packed)
+      .reduce((sum, i) => sum + Number(i.count), 0);
     const prog = total > 0 ? (packed / total) * 100 : 0;
 
-    return { 
-      totalWeight: weight, 
-      totalPrice: price, 
-      totalItems: total, 
-      packedItems: packed, 
-      progress: prog 
-    };
+    return { totalWeight: weight, totalPrice: price, totalItems: total, packedItems: packed, progress: prog };
   }, [items]); // <--- Die Abhängigkeit: Nur wenn items sich ändern
 
   const chartData = useMemo(() => {
@@ -332,10 +353,121 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   >
                     {item.is_packed ? "✓" : ""}
                   </div>
-                  <div className={listStyles.itemName}>{item.name}</div>
-                  <div className={listStyles.itemStat}>{item.weight}<span className={listStyles.unit}>g</span></div>
-                  <div className={listStyles.itemStat}>{item.count}<span className={listStyles.unit}>x</span></div>
-                  <div className={listStyles.itemStat}>{Number(item.price).toFixed(2)}<span className={listStyles.unit}>€</span></div>
+                  {/* NAME EDITIEREN */}
+                  <div 
+                    className={listStyles.itemName}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "name" });
+                      setTempValue(item.name);
+                    }}
+                  >
+                    {editingCell?.id === item.id && editingCell?.field === "name" ? (
+                      <input 
+                        autoFocus
+                        className={listStyles.inlineInput}
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        onBlur={() => updateItemField(item, "name", tempValue)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateItemField(item, "name", tempValue);
+                          } else if (e.key === "Escape") {
+                            setEditingCell(null);
+                          }
+                        }}
+                      />
+                    ) : (
+                      item.name
+                    )}
+                  </div>
+
+                  {/* GEWICHT EDITIEREN */}
+                  <div 
+                    className={listStyles.itemStat}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "weight" });
+                      setTempValue(item.weight.toString());
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                      {editingCell?.id === item.id && editingCell?.field === "weight" ? (
+                        <input 
+                          autoFocus
+                          type="number"
+                          className={listStyles.inlineInputSmall}
+                          value={tempValue}
+                          onChange={(e) => setTempValue(e.target.value)}
+                          onBlur={() => updateItemField(item, "weight", parseInt(tempValue) || 0)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateItemField(item, "weight", parseInt(tempValue) || 0);
+                            else if (e.key === "Escape") setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span>{item.weight}</span>
+                      )}
+                      <span className={listStyles.unit}>g</span>
+                    </div>
+                  </div>
+
+                  {/* ANZAHL EDITIEREN */}
+                  <div 
+                    className={listStyles.itemStat}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "count" });
+                      setTempValue(item.count.toString());
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                      {editingCell?.id === item.id && editingCell?.field === "count" ? (
+                        <input 
+                          autoFocus
+                          type="number"
+                          className={listStyles.inlineInputSmall}
+                          value={tempValue}
+                          onChange={(e) => setTempValue(e.target.value)}
+                          onBlur={() => updateItemField(item, "count", parseInt(tempValue) || 1)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateItemField(item, "count", parseInt(tempValue) || 1);
+                            else if (e.key === "Escape") setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span>{item.count}</span>
+                      )}
+                      <span className={listStyles.unit}>x</span>
+                    </div>
+                  </div>
+
+                  {/* PREIS EDITIEREN */}
+                  <div 
+                    className={listStyles.itemStat}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "price" });
+                      setTempValue(item.price.toString());
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                      {editingCell?.id === item.id && editingCell?.field === "price" ? (
+                        <input 
+                          autoFocus
+                          type="number"
+                          step="0.01"
+                          className={listStyles.inlineInputSmall}
+                          value={tempValue}
+                          onChange={(e) => setTempValue(e.target.value)}
+                          onBlur={() => updateItemField(item, "price", parseFloat(tempValue) || 0)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateItemField(item, "price", parseFloat(tempValue) || 0);
+                            else if (e.key === "Escape") setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span>{Number(item.price).toFixed(2)}</span>
+                      )}
+                      <span className={listStyles.unit}>€</span>
+                    </div>
+                  </div>
                   <button className={listStyles.deleteButtonSmall} onClick={() => setItemToDelete(item)}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="3 6 5 6 21 6"></polyline>

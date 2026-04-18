@@ -436,3 +436,24 @@
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+.inlineInput {
+  all: unset;
+  width: 100%;
+  background: transparent;
+  color: #1d1d1f;
+  -moz-appearance: textfield;
+}
+
+.inlineInputSmall {
+  all: unset;
+  width: 50px; /* Kompakt für Zahlen */
+  background: transparent;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+
+.inlineInputSmall::-webkit-outer-spin-button,
+.inlineInputSmall::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

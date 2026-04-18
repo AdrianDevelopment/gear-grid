@@ -136,7 +136,7 @@ export default function Navbar() {
                   <div className={styles.userEmail}>Einstellungen</div>
                 </div>
                 
-                <button className={styles.dropdownItem} type="button">
+                {/* <button className={styles.dropdownItem} type="button">
                   <span>Einheit: Metrisch (kg/g)</span>
                 </button>
                 
@@ -152,6 +152,9 @@ export default function Navbar() {
 
                 <button className={styles.dropdownItem} type="button">
                   <span>Sprache: Deutsch</span>
+                </button> */}
+                <button className={styles.dropdownItem} type="button">
+                  <span>Bald verfügbar</span>
                 </button>
               </div>
             )}
