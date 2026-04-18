@@ -48,6 +48,8 @@
   grid-row: 2;
   padding: 24px;
   z-index: 1;
+  min-height: 0; /* KRITISCH: Verhindert, dass der Content die Grid-Row aufbläht */
+  overflow: hidden; /* Behält alles innerhalb der Box */
 }
 
 .contentBox {
@@ -61,7 +63,12 @@
   padding: 2rem;
   color: #1d1d1f;
   transition: all 0.3s ease;
+  min-height: 0; /* KRITISCH */
+  overflow: hidden; /* Erlaubt dem Kind-Container (scrollContainer) das Scrollen zu übernehmen */
+  display: flex; /* Sorgt dafür, dass Kinder sich anpassen können */
+  flex-direction: column;
 }
+
 
 .contentBox:hover {
   background: rgba(255, 255, 255, 0.2);

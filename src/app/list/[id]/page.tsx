@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, useRef } from "react";
+import { useEffect, useState, use, useRef, useMemo } from "react";
 import { supabase } from "../../../lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import ModalPortal from "../../../components/ModalPortal";
@@ -99,7 +99,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     const count = parseInt(newItemCounts[catId]) || 1;
     const price = parseFloat(newItemPrices[catId]) || 0;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("packing_items")
       .insert([{
         name: name.trim(),
@@ -107,17 +107,27 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         category_id: catId,
         weight,
         count,
-        price
+        price,
+        is_packed: false // Explizit setzen
       }])
       .select()
       .single();
 
+    if (error) {
+      console.error("Fehler beim Hinzufügen:", error);
+      return;
+    }
+
     if (data) {
-      setItems([...items, data]);
-      setNewItemNames({ ...newItemNames, [catId]: "" });
-      setNewItemWeights({ ...newItemWeights, [catId]: "" });
-      setNewItemCounts({ ...newItemCounts, [catId]: "" });
-      setNewItemPrices({ ...newItemPrices, [catId]: "" });
+      // Funktionaler State-Update garantiert, dass wir auf dem aktuellsten Stand basieren
+      setItems(prevItems => [...prevItems, data]);
+      
+      // Inputs zurücksetzen
+      setNewItemNames(prev => ({ ...prev, [catId]: "" }));
+      setNewItemWeights(prev => ({ ...prev, [catId]: "" }));
+      setNewItemCounts(prev => ({ ...prev, [catId]: "" }));
+      setNewItemPrices(prev => ({ ...prev, [catId]: "" }));
+      
       nameInputRefs.current[catId]?.focus();
     }
   };
@@ -135,21 +145,47 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
   const confirmDeleteItem = async () => {
     if (!itemToDelete) return;
-    const { error } = await supabase.from("packing_items").delete().eq("id", itemToDelete.id);
-    if (!error) setItems(items.filter(i => i.id !== itemToDelete.id));
+    
+    const { error } = await supabase
+      .from("packing_items")
+      .delete()
+      .eq("id", itemToDelete.id);
+
+    if (!error) {
+      setItems(prevItems => prevItems.filter(i => i.id !== itemToDelete.id));
+    } else {
+      console.error("Fehler beim Löschen:", error);
+    }
     setItemToDelete(null);
   };
 
-  const totalWeight = items.reduce((sum, i) => sum + (i.weight * i.count), 0);
-  const totalPrice = items.reduce((sum, i) => sum + (Number(i.price) * i.count), 0);
-  const totalItems = items.reduce((sum, i) => sum + i.count, 0);
-  const packedItems = items.filter(i => i.is_packed).reduce((sum, i) => sum + i.count, 0);
-  const progress = totalItems > 0 ? (packedItems / totalItems) * 100 : 0;
+  // Diese Werte werden nur neu berechnet, wenn [items] sich ändert
+  const { totalWeight, totalPrice, totalItems, packedItems, progress } = useMemo(() => {
+    console.log("Berechne Zusammenfassung neu..."); // Zum Testen im Browser-Log
 
-  const chartData = categories.map(cat => {
-    const weight = items.filter(i => i.category_id === cat.id).reduce((sum, i) => sum + (i.weight * i.count), 0);
-    return { name: cat.name, value: weight, color: cat.color };
-  }).filter(d => d.value > 0);
+    const weight = items.reduce((sum, i) => sum + (i.weight * i.count), 0);
+    const price = items.reduce((sum, i) => sum + (Number(i.price) * i.count), 0);
+    const total = items.reduce((sum, i) => sum + i.count, 0);
+    const packed = items.filter(i => i.is_packed).reduce((sum, i) => sum + i.count, 0);
+    const prog = total > 0 ? (packed / total) * 100 : 0;
+
+    return { 
+      totalWeight: weight, 
+      totalPrice: price, 
+      totalItems: total, 
+      packedItems: packed, 
+      progress: prog 
+    };
+  }, [items]); // <--- Die Abhängigkeit: Nur wenn items sich ändern
+
+  const chartData = useMemo(() => {
+    return categories.map(cat => {
+      const weight = items
+        .filter(i => i.category_id === cat.id)
+        .reduce((sum, i) => sum + (i.weight * i.count), 0);
+      return { name: cat.name, value: weight, color: cat.color };
+    }).filter(d => d.value > 0);
+  }, [categories, items]); // Berechnen, wenn Kategorien oder Items sich ändern
 
   if (loading) return null;
 
@@ -173,15 +209,20 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   ))}
                 </Pie>
                 <Tooltip 
+                  formatter={(value, name) => [`${(Number(value) / 1000).toFixed(2)} kg`, name]}
                   contentStyle={{ 
                     borderRadius: '16px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                    background: 'rgba(255,255,255,0.95)',
-                    backdropFilter: 'blur(10px)',
-                    fontWeight: '600'
+                    border: '1px solid rgba(255,255,255,0.4)', 
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                    background: 'rgba(255,255,255,0.98)', /* Fast solide für Schärfe */
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    padding: '6px 12px'
                   }}
+                  itemStyle={{ padding: '2px 0' }}
+                  cursor={{ fill: 'transparent' }}
                 />
+
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -213,7 +254,12 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
               <h2 className={listStyles.categoryTitle} style={{ color: cat.color }}>{cat.name}</h2>
               <div className={listStyles.categoryLine} />
               <button className={listStyles.deleteButtonSmall} onClick={() => setCategoryToDelete(cat)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
               </button>
             </div>
 
@@ -240,7 +286,12 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   <div className={listStyles.itemStat}>{item.count}<span className={listStyles.unit}>x</span></div>
                   <div className={listStyles.itemStat}>{Number(item.price).toFixed(2)}<span className={listStyles.unit}>€</span></div>
                   <button className={listStyles.deleteButtonSmall} onClick={() => setItemToDelete(item)}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
                   </button>
                 </div>
               ))}
@@ -257,21 +308,21 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                 />
                 <input 
                   className={listStyles.addInput} 
-                  placeholder="0" 
+                  placeholder="0g" 
                   value={newItemWeights[cat.id] || ""}
                   onChange={(e) => setNewItemWeights({ ...newItemWeights, [cat.id]: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
                 />
                 <input 
                   className={listStyles.addInput} 
-                  placeholder="1" 
+                  placeholder="1x" 
                   value={newItemCounts[cat.id] || ""}
                   onChange={(e) => setNewItemCounts({ ...newItemCounts, [cat.id]: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
                 />
                 <input 
                   className={listStyles.addInput} 
-                  placeholder="0.00" 
+                  placeholder="0.00€" 
                   value={newItemPrices[cat.id] || ""}
                   onChange={(e) => setNewItemPrices({ ...newItemPrices, [cat.id]: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
@@ -281,13 +332,14 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   className={listStyles.confirmAddButton} 
                   onClick={() => addItem(cat.id)}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
               </div>
             </div>
           </div>
         ))}
 
+        <div className={listStyles.horizontalLine} />
         <div className={listStyles.addCategoryContainer}>
           <input 
             className={listStyles.addCategoryInput} 

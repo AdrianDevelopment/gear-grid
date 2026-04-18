@@ -26,25 +26,50 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Dynamischer Titel basierend auf der aktuellen Liste
+  // Dynamischer Titel basierend auf der aktuellen Liste + Realtime Update
   useEffect(() => {
+    const id = pathname.startsWith("/list/") ? pathname.split("/").pop() : null;
+
+    if (!id) {
+      setListName("");
+      return;
+    }
+
+    // 1. Initialen Namen laden
     const fetchTitle = async () => {
-      if (pathname.startsWith("/list/")) {
-        const id = pathname.split("/").pop();
-        if (id) {
-          const { data } = await supabase
-            .from("packing_lists")
-            .select("name")
-            .eq("id", id)
-            .single();
-          if (data) setListName(data.name);
-        }
-      } else {
-        setListName("");
-      }
+      const { data } = await supabase
+        .from("packing_lists")
+        .select("name")
+        .eq("id", id)
+        .single();
+      if (data) setListName(data.name);
     };
 
     fetchTitle();
+
+    // 2. Realtime Abo: Wenn sich die Liste in der DB ändert (z.B. durch Sidebar Rename)
+    const channel = supabase
+      .channel(`list-rename-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "packing_lists",
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          // Wenn ein Update reinkommt, setzen wir den neuen Namen direkt im UI
+          if (payload.new && payload.new.name) {
+            setListName(payload.new.name);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -114,7 +139,7 @@ export default function Navbar() {
                     <button className={styles.dropdownItem} type="button">
                       Profil bearbeiten
                     </button>
-                    <div className={styles.verticalLine}></div>
+                    <div className={styles.horizontalLine} />
                     <button 
                       className={`${styles.dropdownItem} ${styles.logout}`} 
                       type="button"

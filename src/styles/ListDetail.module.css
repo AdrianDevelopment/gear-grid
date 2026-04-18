@@ -1,9 +1,13 @@
 .listPage {
-  height: calc(100vh - 56px - 80px); /* Abzug Navbar + Padding */
+  flex: 1; /* Nimmt den verfügbaren Platz im contentBox ein, ohne das Padding zu sprengen */
+  min-height: 0; /* Erlaubt dem Flex-Item zu schrumpfen */
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
+  overflow: hidden;
 }
+
+
 
 .topSection {
   display: grid;
@@ -78,8 +82,8 @@
   padding-right: 16px;
   display: flex;
   flex-direction: column;
-  gap: 48px; /* Mehr Platz zwischen Kategorien */
-  padding-bottom: 100px;
+  gap: 28px; /* Mehr Platz zwischen Kategorien */
+  padding-bottom: 30px;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
 }
@@ -96,7 +100,7 @@
 .categoryGroup {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
 }
 
 .categoryHeader {
@@ -124,7 +128,7 @@
   grid-template-columns: 44px 1fr 100px 80px 100px 44px;
   gap: 16px;
   padding: 0 20px;
-  margin-bottom: -8px;
+  margin-bottom: -2px;
 }
 
 .headerLabel {
@@ -252,7 +256,17 @@
 .deleteButtonSmall:hover {
   background: rgba(255, 59, 48, 0.12);
   color: #ff3b30;
-  transform: scale(1.1) rotate(8deg);
+  transform: scale(1.1) rotate(5deg);
+}
+
+.horizontalLine {
+  width: 96%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin-top: 4px;
+  margin-bottom: -8px;
+  min-height: 1px; 
+  flex-shrink: 0;
 }
 
 .confirmAddButton {
@@ -263,16 +277,19 @@
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: #34c759;
-  color: #fff;
+  /* background: #34c759; */
+  background: transparent;
+  color: rgba(29, 29, 31, 0.6);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 4px 12px rgba(52, 199, 89, 0.2);
+  /* box-shadow: 0 4px 12px rgba(52, 199, 89, 0.2); */
 }
 
 .confirmAddButton:hover {
   transform: scale(1.15);
-  box-shadow: 0 6px 16px rgba(52, 199, 89, 0.4);
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.2);
+  /* box-shadow: 0 6px 16px rgba(52, 199, 89, 0.4); */
 }
 
 .addCategoryInput {

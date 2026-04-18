@@ -119,24 +119,29 @@ export default function Sidebar() {
   };
 
   const saveRename = async () => {
-    if (editingId) {
-      const { error } = await supabase
-        .from("packing_lists")
-        .update({ name: tempName.trim() })
-        .eq("id", editingId);
+    if (!editingId) return;
 
-      if (error) {
-        console.error("Error updating list:", error);
-      } else {
-        setLists(
-          lists.map((l) =>
-            l.id === editingId ? { ...l, name: tempName.trim() || l.name } : l
-          )
-        );
-      }
+    // Profi-Tipp: Wenn der Name leer ist, nimm den alten Namen zurück 
+    // oder verhindere das Speichern, anstatt einen leeren String zu senden.
+    const trimmedName = tempName.trim();
+    const oldName = lists.find(l => l.id === editingId)?.name;
+
+    if (!trimmedName || trimmedName === oldName) {
       setEditingId(null);
-      setTempName("");
+      return;
     }
+
+    const { error } = await supabase
+      .from("packing_lists")
+      .update({ name: trimmedName })
+      .eq("id", editingId);
+
+    if (!error) {
+      setLists(lists.map((l) =>
+        l.id === editingId ? { ...l, name: trimmedName } : l
+      ));
+    }
+    setEditingId(null);
   };
 
   const openDeleteModal = (e: React.MouseEvent, list: Packliste) => {

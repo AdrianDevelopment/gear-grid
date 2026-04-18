@@ -217,6 +217,8 @@
   all: unset;
   width: 100%;
   background: transparent;
+  border-bottom: #1c1c1e solid 1px;
+  padding: 4px 8px;
   color: #1d1d1f;
   font-weight: 500;
   font-size: 15px;

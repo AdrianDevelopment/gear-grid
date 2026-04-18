@@ -144,13 +144,13 @@
 }
 
 .logout {
-  color: #ff3b30;
+  color: #ff3b30 !important;
   padding-top: 10px;
 }
 
 .logout:hover {
-  background: rgba(255, 59, 48, 0.15);
-  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.15) !important;
+  color: #ff3b30 !important
 }
 
 @media (prefers-color-scheme: dark) {
@@ -182,7 +182,7 @@
   }
 }
 
-.verticalLine {
+.horizontalLine {
   width: 100%;
   height: 1px;
   background: rgba(0, 0, 0, 0.05);
@@ -190,7 +190,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .verticalLine {
+  .horizontalLine {
     background: rgba(255, 255, 255, 0.08);
   }
 }
