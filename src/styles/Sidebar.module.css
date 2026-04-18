@@ -3,71 +3,125 @@
   grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 40px 20px;
-  background: rgba(225, 225, 225, 0.15);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border-right: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  gap: 32px;
+  padding: 40px 16px;
+  background: rgba(225, 225, 225, 0.1);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.05);
   color: #1d1d1f;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 280px;
 }
 
 .sidebar:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-right: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .title {
   font-size: 1.6rem;
   font-weight: 700;
   color: #1d1d1f;
-  padding-left: 12px;
-  padding-bottom: 1rem;
-  /* margin-bottom: 1rem; */
+  padding: 0 12px;
+  margin-bottom: 12px;
+}
+
+.listSection {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.scrollArea {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px; /* Ca. 5 Items */
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.link {
+.link, .editItem {
   all: unset;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 12px;
-  color: rgba(29, 29, 31, 0.7);
+  color: rgba(29, 29, 31, 0.8);
   font-weight: 500;
   font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
+  user-select: none;
 }
 
 .link:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   color: #1d1d1f;
   transform: translateX(4px);
 }
 
 .isActive {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.4);
   color: #1d1d1f;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
-.isActive::before {
-  content: "";
-  position: absolute;
-  left: -4px;
-  top: 25%;
-  height: 50%;
-  width: 4px;
-  background: #1d1d1f;
+.editInput {
+  all: unset;
+  width: 100%;
+  background: transparent;
+  color: #1d1d1f;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.plusButton {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 10px;
   border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  color: rgba(29, 29, 31, 0.8);
+  transition: all 0.2s ease;
+}
+
+.plusButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #1d1d1f;
+  transform: scale(1.03);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+}
+
+.items {
+  margin-top: auto;
 }

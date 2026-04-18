@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Gear Grid",
   description: "Packliste für die nächste Reise",
+  icons: {
+    icon: "/logo3.svg",
+  }
 };
 
 export default function RootLayout({
