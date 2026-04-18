@@ -86,12 +86,11 @@ export default function Navbar() {
                     <div className={styles.userInfo}>
                       <div className={styles.userEmail}>{user.email}</div>
                     </div>
+                    <div className={styles.verticalLine}></div>
                     <button className={styles.dropdownItem} type="button">
                       Profil bearbeiten
                     </button>
-                    <button className={styles.dropdownItem} type="button">
-                      Einstellungen
-                    </button>
+                    <div className={styles.verticalLine}></div>
                     <button 
                       className={`${styles.dropdownItem} ${styles.logout}`} 
                       type="button"

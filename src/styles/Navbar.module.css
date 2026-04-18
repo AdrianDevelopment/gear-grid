@@ -13,10 +13,9 @@
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   color: #1d1d1f;
   transition: all 0.3s ease;
-  z-index: 100; /* Höher als .main (z-index: 1) */
-  position: relative; /* Notwendig für z-index */
+  z-index: 100;
+  position: relative;
 }
-
 
 .navbar:hover {
   background: rgba(255, 255, 255, 0.2);
@@ -66,8 +65,8 @@
 }
 
 .iconButton:active {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(0);
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(0);
 }
 
 .icon {
@@ -85,77 +84,120 @@
   opacity: 0.8;
 }
 
-.accountWrapper {
-  position: relative;
-  display: flex;
-}
-
 .dropdown {
   position: absolute;
-  top: calc(100% + 15px);
-  right: -5px; /* Perfektes Alignment mit der rechten Kante der Buttons */
+  top: calc(100% + 12px);
+  right: 11px;
   width: 240px;
-  background: rgba(255, 255, 255, 0.12); /* Deutlich reduziertes Weiß */
-  -webkit-backdrop-filter: blur(25px) saturate(180%);
-  backdrop-filter: blur(25px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-  padding: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  z-index: 9999; /* Garantiert über dem Main Content */
-  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 9999;
+  animation: slideDown 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-origin: top right;
 }
 
+@supports (backdrop-filter: blur(1px)) {
+  .dropdown {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+  }
+}
+
 .userInfo {
-  padding: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
 }
 
 .userEmail {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #1d1d1f;
-  opacity: 0.9;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  opacity: 0.5;
+  letter-spacing: 0.02em;
 }
 
 .dropdownItem {
   all: unset;
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(29, 29, 31, 0.85);
+  color: #1d1d1f;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .dropdownItem:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: #f5f5f7;
   color: #000;
-  transform: translateX(4px);
 }
 
 .logout {
-  color: #ff3b30;
-  margin-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 14px;
+  color: #1d1d1f;
+  font-weight: 600;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 10px;
 }
 
 .logout:hover {
-  background: rgba(255, 59, 48, 0.15);
-  color: #ff3b30;
+  background: #f5f5f7;
+  color: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dropdown {
+    background: #1c1c1e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  }
+
+  @supports (backdrop-filter: blur(1px)) {
+    .dropdown {
+      background: rgba(28, 28, 30, 0.9);
+      backdrop-filter: blur(20px);
+    }
+  }
+
+  .userEmail {
+    color: #fff;
+    opacity: 0.4;
+  }
+
+  .dropdownItem {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .dropdownItem:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .verticalLine {
+    width: 100%;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 0;
+  }
+
+  .logout {
+    color: #ff3b30;
+  }
+  
+  .logout:hover {
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff3b30;
+  }
 }
 
 @keyframes slideDown {
