@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use, useRef, useMemo } from "react";
 import { supabase } from "../../../lib/supabase";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from "recharts";
 import ModalPortal from "../../../components/ModalPortal";
 import listStyles from "../../../styles/ListDetail.module.css";
 import { useRouter } from "next/navigation";
@@ -25,7 +25,16 @@ interface Item {
 }
 
 const CATEGORY_COLORS = [
-  "#5856D6", "#007AFF", "#34C759", "#FF9500", "#FF3B30", "#AF52DE", "#5AC8FA", "#FF2D55"
+  "#5856D6", // Indigo
+  "#007AFF", // Blue
+  "#34C759", // Green
+  "#FF2D55", // Pink
+  "#FF9500", // Orange
+  "#AF52DE", // Purple
+  "#5AC8FA", // Sky
+  "#FF3B30", // Red
+  "#64D2FF", // Teal
+  "#FFCC00"  // Gold
 ];
 
 export default function ListDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,6 +57,9 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const nameInputRefs = useRef<{ [catId: string]: HTMLInputElement | null }>({});
+
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [tempValue, setTempValue] = useState<string>("");
 
   useEffect(() => {
     const checkUser = async () => {
@@ -169,6 +181,28 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const updateItemField = async (item: Item, field: string, value: string | number) => {
+    setEditingCell(null);
+
+    // Wichtig: Vergleich nach Typ-Konvertierung
+    const formattedValue = (field === "name") ? value : Number(value);
+    if (item[field as keyof Item] === formattedValue) return;
+
+    // Lokaler State-Update (Optimistic UI)
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, [field]: formattedValue } : i));
+
+    // Supabase Update im Hintergrund
+    const { error } = await supabase
+      .from("packing_items")
+      .update({ [field]: formattedValue })
+      .eq("id", item.id);
+
+    if (error) {
+      console.error("Update Fehler:", error);
+      fetchData(); // Bei Fehler Daten neu laden, um inkonsistenten State zu fixen
+    }
+  };
+
   const confirmDeleteItem = async () => {
     if (!itemToDelete) return;
     
@@ -189,19 +223,15 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const { totalWeight, totalPrice, totalItems, packedItems, progress } = useMemo(() => {
     console.log("Berechne Zusammenfassung neu..."); // Zum Testen im Browser-Log
 
-    const weight = items.reduce((sum, i) => sum + (i.weight * i.count), 0);
-    const price = items.reduce((sum, i) => sum + (Number(i.price) * i.count), 0);
-    const total = items.reduce((sum, i) => sum + i.count, 0);
-    const packed = items.filter(i => i.is_packed).reduce((sum, i) => sum + i.count, 0);
+    const weight = items.reduce((sum, i) => sum + (Number(i.weight) * Number(i.count)), 0);
+    const price = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.count)), 0);
+    const total = items.reduce((sum, i) => sum + Number(i.count), 0);
+    const packed = items
+      .filter(i => i.is_packed)
+      .reduce((sum, i) => sum + Number(i.count), 0);
     const prog = total > 0 ? (packed / total) * 100 : 0;
 
-    return { 
-      totalWeight: weight, 
-      totalPrice: price, 
-      totalItems: total, 
-      packedItems: packed, 
-      progress: prog 
-    };
+    return { totalWeight: weight, totalPrice: price, totalItems: total, packedItems: packed, progress: prog };
   }, [items]); // <--- Die Abhängigkeit: Nur wenn items sich ändern
 
   const chartData = useMemo(() => {
@@ -231,8 +261,24 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   stroke="none"
                 >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell 
+                      key={`cell-${index}`}
+                      fill={entry.color}
+                      fillOpacity={0.8} // Macht das Chart selbst leicht glasig
+                      stroke="rgba(255,255,255,0.2)" // Subtile Kante
+                      strokeWidth={1}
+                    />
                   ))}
+                <Label 
+                  value={`Gewicht`} 
+                  position="center" 
+                  fill="#1d1d1f"
+                  style={{
+                    fontSize: '1.6rem',
+                    fontWeight: '800',
+                    fontFamily: 'inherit'
+                  }}
+                />
                 </Pie>
                 <Tooltip 
                   formatter={(value, name) => [`${(Number(value) / 1000).toFixed(2)} kg`, name]}
@@ -307,10 +353,121 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   >
                     {item.is_packed ? "✓" : ""}
                   </div>
-                  <div className={listStyles.itemName}>{item.name}</div>
-                  <div className={listStyles.itemStat}>{item.weight}<span className={listStyles.unit}>g</span></div>
-                  <div className={listStyles.itemStat}>{item.count}<span className={listStyles.unit}>x</span></div>
-                  <div className={listStyles.itemStat}>{Number(item.price).toFixed(2)}<span className={listStyles.unit}>€</span></div>
+                  {/* NAME EDITIEREN */}
+                  <div 
+                    className={listStyles.itemName}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "name" });
+                      setTempValue(item.name);
+                    }}
+                  >
+                    {editingCell?.id === item.id && editingCell?.field === "name" ? (
+                      <input 
+                        autoFocus
+                        className={listStyles.inlineInput}
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        onBlur={() => updateItemField(item, "name", tempValue)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            updateItemField(item, "name", tempValue);
+                          } else if (e.key === "Escape") {
+                            setEditingCell(null);
+                          }
+                        }}
+                      />
+                    ) : (
+                      item.name
+                    )}
+                  </div>
+
+                  {/* GEWICHT EDITIEREN */}
+                  <div 
+                    className={listStyles.itemStat}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "weight" });
+                      setTempValue(item.weight.toString());
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                      {editingCell?.id === item.id && editingCell?.field === "weight" ? (
+                        <input 
+                          autoFocus
+                          type="number"
+                          className={listStyles.inlineInputSmall}
+                          value={tempValue}
+                          onChange={(e) => setTempValue(e.target.value)}
+                          onBlur={() => updateItemField(item, "weight", parseInt(tempValue) || 0)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateItemField(item, "weight", parseInt(tempValue) || 0);
+                            else if (e.key === "Escape") setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span>{item.weight}</span>
+                      )}
+                      <span className={listStyles.unit}>g</span>
+                    </div>
+                  </div>
+
+                  {/* ANZAHL EDITIEREN */}
+                  <div 
+                    className={listStyles.itemStat}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "count" });
+                      setTempValue(item.count.toString());
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                      {editingCell?.id === item.id && editingCell?.field === "count" ? (
+                        <input 
+                          autoFocus
+                          type="number"
+                          className={listStyles.inlineInputSmall}
+                          value={tempValue}
+                          onChange={(e) => setTempValue(e.target.value)}
+                          onBlur={() => updateItemField(item, "count", parseInt(tempValue) || 1)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateItemField(item, "count", parseInt(tempValue) || 1);
+                            else if (e.key === "Escape") setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span>{item.count}</span>
+                      )}
+                      <span className={listStyles.unit}>x</span>
+                    </div>
+                  </div>
+
+                  {/* PREIS EDITIEREN */}
+                  <div 
+                    className={listStyles.itemStat}
+                    onDoubleClick={() => {
+                      setEditingCell({ id: item.id, field: "price" });
+                      setTempValue(item.price.toString());
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                      {editingCell?.id === item.id && editingCell?.field === "price" ? (
+                        <input 
+                          autoFocus
+                          type="number"
+                          step="0.01"
+                          className={listStyles.inlineInputSmall}
+                          value={tempValue}
+                          onChange={(e) => setTempValue(e.target.value)}
+                          onBlur={() => updateItemField(item, "price", parseFloat(tempValue) || 0)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") updateItemField(item, "price", parseFloat(tempValue) || 0);
+                            else if (e.key === "Escape") setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span>{Number(item.price).toFixed(2)}</span>
+                      )}
+                      <span className={listStyles.unit}>€</span>
+                    </div>
+                  </div>
                   <button className={listStyles.deleteButtonSmall} onClick={() => setItemToDelete(item)}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="3 6 5 6 21 6"></polyline>
@@ -331,7 +488,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                     }
                   }}
                   className={listStyles.addInput} 
-                  placeholder="Gegenstand..." 
+                  placeholder="Gegenstand hinzufügen" 
                   value={newItemNames[cat.id] || ""}
                   onChange={(e) => setNewItemNames({ ...newItemNames, [cat.id]: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
@@ -373,11 +530,22 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         <div className={listStyles.addCategoryContainer}>
           <input 
             className={listStyles.addCategoryInput} 
-            placeholder="+ Neue Kategorie erstellen..." 
+            placeholder="Neue Kategorie erstellen" 
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCategory()}
           />
+          <button 
+            type="button"
+            className={listStyles.confirmAddCategoryButton} 
+            onClick={addCategory}
+            title="Kategorie hinzufügen"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
         </div>
       </div>
 

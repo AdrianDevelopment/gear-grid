@@ -162,7 +162,7 @@
 
   @supports (backdrop-filter: blur(1px)) {
     .dropdown {
-      background: rgba(28, 28, 30, 0.9);
+      background: rgba(28, 28, 30, 0.94);
       backdrop-filter: blur(20px);
     }
   }
