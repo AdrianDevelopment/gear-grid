@@ -17,7 +17,9 @@ import {
   useSensors,
   DragOverEvent,
   DragEndEvent,
-  defaultDropAnimationSideEffects
+  defaultDropAnimationSideEffects,
+  DragStartEvent,
+  useDroppable
 } from "@dnd-kit/core";
 import { 
   arrayMove, 
@@ -28,11 +30,18 @@ import {
 import {
   restrictToVerticalAxis,
 } from "@dnd-kit/modifiers";
+import { createPortal } from "react-dom";
 
 interface Category {
   id: string;
   name: string;
   color: string;
+}
+
+interface GearItem {
+  id: string;
+  name: string;
+  weight: number;
 }
 
 interface Item {
@@ -82,7 +91,7 @@ function SortableItem({ item, children }: { item: Item, children: React.ReactNod
     transition: transition || 'transform 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
     // transition: transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)',
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 999 : "auto",
+    zIndex: isDragging ? 9999 : "auto",
     position: "relative"/* as const */,
     // Verhindert Textmarkierung während des Draggens
     touchAction: "none",
@@ -104,6 +113,19 @@ function SortableItem({ item, children }: { item: Item, children: React.ReactNod
         </div>
       </div>
       {children} 
+    </div>
+  );
+}
+
+function DroppableCategory({ cat, children }: { cat: Category; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: cat.id,
+    data: { categoryId: cat.id },
+  });
+
+  return (
+    <div ref={setNodeRef} style={{ outline: isOver ? "2px solid #007AFF" : "none" }}>
+      {children}
     </div>
   );
 }
@@ -131,6 +153,8 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [tempValue, setTempValue] = useState<string>("");
+
+  const [activeGear, setActiveGear] = useState<GearItem | null>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -168,6 +192,16 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     useSensor(KeyboardSensor)
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current;
+
+    if (data?.type === "GearItem") {
+      setActiveGear(data.gear);
+    } else {
+      setActiveGear(null);
+    }
+  };
+
   // [Drag Over] Feuert, wenn ein Item über eine ANDERE Kategorie schwebt
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
@@ -203,6 +237,39 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
+
+    const activeData = active.data.current;
+
+    if (activeData?.type === "GearItem") {
+      const gear = activeData.gear;
+      const targetCategoryId = over.data.current?.categoryId;
+
+      if (!targetCategoryId) {
+        setActiveGear(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("packing_items")
+        .insert([{
+          name: gear.name,
+          weight: gear.weight,
+          count: 1,
+          price: 0,
+          list_id: resolvedParams.id,
+          category_id: targetCategoryId,
+          is_packed: false,
+        }])
+        .select()
+        .single();
+
+      if (!error && data) {
+        setItems(prev => [...prev, data]);
+      }
+
+      setActiveGear(null);
+      return;
+    }
 
     const activeId = active.id;
     const overId = over.id;
@@ -467,6 +534,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         sensors={sensors} 
         collisionDetection={closestCorners} 
         modifiers={[restrictToVerticalAxis]}
+        onDragStart={handleDragStart}
         onDragOver={handleDragOver} 
         onDragEnd={handleDragEnd}
       >
@@ -475,223 +543,225 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
             const categoryItems = items.filter(i => i.category_id === cat.id);
             
             return (
-              <div key={cat.id} className={listStyles.categoryGroup}>
-                <div className={listStyles.categoryHeader}>
-                  <h2 className={listStyles.categoryTitle} style={{ color: cat.color }}>{cat.name}</h2>
-                  <div className={listStyles.categoryLine} />
-                  <button className={listStyles.deleteButtonSmall} onClick={() => setCategoryToDelete(cat)}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      <line x1="10" y1="11" x2="10" y2="17"></line>
-                      <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                  </button>
-                </div>
-
-                <div className={listStyles.tableHeader}>
-                  <div />
-                  <div className={listStyles.headerLabel}>Name</div>
-                  <div className={listStyles.headerLabel}>Gewicht</div>
-                  <div className={listStyles.headerLabel}>Anzahl</div>
-                  <div className={listStyles.headerLabel}>Preis</div>
-                  <div />
-                </div>
-
-                <SortableContext 
-                  items={categoryItems.map(i => i.id)} 
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className={listStyles.itemsList}>
-                    {categoryItems.map(item => (
-                      <SortableItem key={item.id} item={item}>
-                        <div 
-                          className={`${listStyles.checkbox} ${item.is_packed ? listStyles.checked : ""}`}
-                          onClick={() => togglePacked(item)}
-                        >
-                          {item.is_packed ? "✓" : ""}
-                        </div>
-                        {/* NAME EDITIEREN */}
-                        <div 
-                          className={listStyles.itemName}
-                          onDoubleClick={() => {
-                            setEditingCell({ id: item.id, field: "name" });
-                            setTempValue(item.name);
-                          }}
-                        >
-                          {editingCell?.id === item.id && editingCell?.field === "name" ? (
-                            <input 
-                              autoFocus
-                              className={listStyles.inlineInput}
-                              value={tempValue}
-                              onChange={(e) => setTempValue(e.target.value)}
-                              onBlur={() => updateItemField(item, "name", tempValue)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  updateItemField(item, "name", tempValue);
-                                } else if (e.key === "Escape") {
-                                  setEditingCell(null);
-                                }
-                              }}
-                            />
-                          ) : (
-                            item.name
-                          )}
-                        </div>
-
-                        {/* GEWICHT EDITIEREN */}
-                        <div 
-                          className={listStyles.itemStat}
-                          onDoubleClick={() => {
-                            setEditingCell({ id: item.id, field: "weight" });
-                            setTempValue(item.weight.toString());
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
-                            {editingCell?.id === item.id && editingCell?.field === "weight" ? (
-                              <input 
-                                autoFocus
-                                type="number"
-                                className={listStyles.inlineInputSmall}
-                                value={tempValue}
-                                style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
-                                onChange={(e) => {
-                                  if (e.target.value.length <= 6) setTempValue(e.target.value);
-                                }}
-                                onBlur={() => updateItemField(item, "weight", parseInt(tempValue) || 0)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") updateItemField(item, "weight", parseInt(tempValue) || 0);
-                                  else if (e.key === "Escape") setEditingCell(null);
-                                }}
-                              />
-                            ) : (
-                              <span>{item.weight}</span>
-                            )}
-                            <span className={listStyles.unit}>g</span>
-                          </div>
-                        </div>
-
-                        {/* ANZAHL EDITIEREN */}
-                        <div 
-                          className={listStyles.itemStat}
-                          onDoubleClick={() => {
-                            setEditingCell({ id: item.id, field: "count" });
-                            setTempValue(item.count.toString());
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
-                            {editingCell?.id === item.id && editingCell?.field === "count" ? (
-                              <input 
-                                autoFocus
-                                type="number"
-                                className={listStyles.inlineInputSmall}
-                                value={tempValue}
-                                style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
-                                onChange={(e) => {
-                                  if (e.target.value.length <= 4) setTempValue(e.target.value);
-                                }}
-                                onBlur={() => updateItemField(item, "count", parseInt(tempValue) || 1)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") updateItemField(item, "count", parseInt(tempValue) || 1);
-                                  else if (e.key === "Escape") setEditingCell(null);
-                                }}
-                              />
-                            ) : (
-                              <span>{item.count}</span>
-                            )}
-                            <span className={listStyles.unit}>x</span>
-                          </div>
-                        </div>
-
-                        {/* PREIS EDITIEREN */}
-                        <div 
-                          className={listStyles.itemStat}
-                          onDoubleClick={() => {
-                            setEditingCell({ id: item.id, field: "price" });
-                            setTempValue(item.price.toString());
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
-                            {editingCell?.id === item.id && editingCell?.field === "price" ? (
-                              <input 
-                                autoFocus
-                                type="number"
-                                step="0.01"
-                                className={listStyles.inlineInputSmall}
-                                value={tempValue}
-                                style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
-                                onChange={(e) => {
-                                  if (e.target.value.length <= 5) setTempValue(e.target.value);
-                                }}
-                                onBlur={() => updateItemField(item, "price", parseFloat(tempValue) || 0)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") updateItemField(item, "price", parseFloat(tempValue) || 0);
-                                  else if (e.key === "Escape") setEditingCell(null);
-                                }}
-                              />
-                            ) : (
-                              <span>{Number(item.price).toFixed(2)}</span>
-                            )}
-                            <span className={listStyles.unit}>€</span>
-                          </div>
-                        </div>
-                        <button className={listStyles.deleteButtonSmall} onClick={() => setItemToDelete(item)}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                          </svg>
-                        </button>
-                      </SortableItem>
-                    ))}
-
-                    <div className={listStyles.addItemRow}>
-                      <div className={listStyles.checkbox} style={{ opacity: 0.2, cursor: 'default' }}>+</div>
-                      <input 
-                        ref={(el) => {
-                          if (nameInputRefs.current) {
-                            nameInputRefs.current[cat.id] = el;
-                          }
-                        }}
-                        className={listStyles.addInput} 
-                        placeholder="Gegenstand hinzufügen" 
-                        value={newItemNames[cat.id] || ""}
-                        onChange={(e) => setNewItemNames({ ...newItemNames, [cat.id]: e.target.value })}
-                        onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
-                      />
-                      <input 
-                        className={listStyles.addInput} 
-                        placeholder="0g" 
-                        value={newItemWeights[cat.id] || ""}
-                        onChange={(e) => setNewItemWeights({ ...newItemWeights, [cat.id]: e.target.value })}
-                        onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
-                      />
-                      <input 
-                        className={listStyles.addInput} 
-                        placeholder="1x" 
-                        value={newItemCounts[cat.id] || ""}
-                        onChange={(e) => setNewItemCounts({ ...newItemCounts, [cat.id]: e.target.value })}
-                        onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
-                      />
-                      <input 
-                        className={listStyles.addInput} 
-                        placeholder="0.00€" 
-                        value={newItemPrices[cat.id] || ""}
-                        onChange={(e) => setNewItemPrices({ ...newItemPrices, [cat.id]: e.target.value })}
-                        onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
-                      />
-                      <button 
-                        type="button"
-                        className={listStyles.confirmAddButton} 
-                        onClick={() => addItem(cat.id)}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                      </button>
-                    </div>
+              <DroppableCategory key={cat.id} cat={cat}>
+                <div key={cat.id} className={listStyles.categoryGroup}>
+                  <div className={listStyles.categoryHeader}>
+                    <h2 className={listStyles.categoryTitle} style={{ color: cat.color }}>{cat.name}</h2>
+                    <div className={listStyles.categoryLine} />
+                    <button className={listStyles.deleteButtonSmall} onClick={() => setCategoryToDelete(cat)}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                    </button>
                   </div>
-                </SortableContext>
-              </div>
+
+                  <div className={listStyles.tableHeader}>
+                    <div />
+                    <div className={listStyles.headerLabel}>Name</div>
+                    <div className={listStyles.headerLabel}>Gewicht</div>
+                    <div className={listStyles.headerLabel}>Anzahl</div>
+                    <div className={listStyles.headerLabel}>Preis</div>
+                    <div />
+                  </div>
+
+                  <SortableContext 
+                    items={categoryItems.map(i => i.id)} 
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className={listStyles.itemsList}>
+                      {categoryItems.map(item => (
+                        <SortableItem key={item.id} item={item}>
+                          <div 
+                            className={`${listStyles.checkbox} ${item.is_packed ? listStyles.checked : ""}`}
+                            onClick={() => togglePacked(item)}
+                          >
+                            {item.is_packed ? "✓" : ""}
+                          </div>
+                          {/* NAME EDITIEREN */}
+                          <div 
+                            className={listStyles.itemName}
+                            onDoubleClick={() => {
+                              setEditingCell({ id: item.id, field: "name" });
+                              setTempValue(item.name);
+                            }}
+                          >
+                            {editingCell?.id === item.id && editingCell?.field === "name" ? (
+                              <input 
+                                autoFocus
+                                className={listStyles.inlineInput}
+                                value={tempValue}
+                                onChange={(e) => setTempValue(e.target.value)}
+                                onBlur={() => updateItemField(item, "name", tempValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    updateItemField(item, "name", tempValue);
+                                  } else if (e.key === "Escape") {
+                                    setEditingCell(null);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              item.name
+                            )}
+                          </div>
+
+                          {/* GEWICHT EDITIEREN */}
+                          <div 
+                            className={listStyles.itemStat}
+                            onDoubleClick={() => {
+                              setEditingCell({ id: item.id, field: "weight" });
+                              setTempValue(item.weight.toString());
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
+                              {editingCell?.id === item.id && editingCell?.field === "weight" ? (
+                                <input 
+                                  autoFocus
+                                  type="number"
+                                  className={listStyles.inlineInputSmall}
+                                  value={tempValue}
+                                  style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
+                                  onChange={(e) => {
+                                    if (e.target.value.length <= 6) setTempValue(e.target.value);
+                                  }}
+                                  onBlur={() => updateItemField(item, "weight", parseInt(tempValue) || 0)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") updateItemField(item, "weight", parseInt(tempValue) || 0);
+                                    else if (e.key === "Escape") setEditingCell(null);
+                                  }}
+                                />
+                              ) : (
+                                <span>{item.weight}</span>
+                              )}
+                              <span className={listStyles.unit}>g</span>
+                            </div>
+                          </div>
+
+                          {/* ANZAHL EDITIEREN */}
+                          <div 
+                            className={listStyles.itemStat}
+                            onDoubleClick={() => {
+                              setEditingCell({ id: item.id, field: "count" });
+                              setTempValue(item.count.toString());
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
+                              {editingCell?.id === item.id && editingCell?.field === "count" ? (
+                                <input 
+                                  autoFocus
+                                  type="number"
+                                  className={listStyles.inlineInputSmall}
+                                  value={tempValue}
+                                  style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
+                                  onChange={(e) => {
+                                    if (e.target.value.length <= 4) setTempValue(e.target.value);
+                                  }}
+                                  onBlur={() => updateItemField(item, "count", parseInt(tempValue) || 1)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") updateItemField(item, "count", parseInt(tempValue) || 1);
+                                    else if (e.key === "Escape") setEditingCell(null);
+                                  }}
+                                />
+                              ) : (
+                                <span>{item.count}</span>
+                              )}
+                              <span className={listStyles.unit}>x</span>
+                            </div>
+                          </div>
+
+                          {/* PREIS EDITIEREN */}
+                          <div 
+                            className={listStyles.itemStat}
+                            onDoubleClick={() => {
+                              setEditingCell({ id: item.id, field: "price" });
+                              setTempValue(item.price.toString());
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
+                              {editingCell?.id === item.id && editingCell?.field === "price" ? (
+                                <input 
+                                  autoFocus
+                                  type="number"
+                                  step="0.01"
+                                  className={listStyles.inlineInputSmall}
+                                  value={tempValue}
+                                  style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
+                                  onChange={(e) => {
+                                    if (e.target.value.length <= 5) setTempValue(e.target.value);
+                                  }}
+                                  onBlur={() => updateItemField(item, "price", parseFloat(tempValue) || 0)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") updateItemField(item, "price", parseFloat(tempValue) || 0);
+                                    else if (e.key === "Escape") setEditingCell(null);
+                                  }}
+                                />
+                              ) : (
+                                <span>{Number(item.price).toFixed(2)}</span>
+                              )}
+                              <span className={listStyles.unit}>€</span>
+                            </div>
+                          </div>
+                          <button className={listStyles.deleteButtonSmall} onClick={() => setItemToDelete(item)}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                          </button>
+                        </SortableItem>
+                      ))}
+
+                      <div className={listStyles.addItemRow}>
+                        <div className={listStyles.checkbox} style={{ opacity: 0.2, cursor: 'default' }}>+</div>
+                        <input 
+                          ref={(el) => {
+                            if (nameInputRefs.current) {
+                              nameInputRefs.current[cat.id] = el;
+                            }
+                          }}
+                          className={listStyles.addInput} 
+                          placeholder="Gegenstand hinzufügen" 
+                          value={newItemNames[cat.id] || ""}
+                          onChange={(e) => setNewItemNames({ ...newItemNames, [cat.id]: e.target.value })}
+                          onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
+                        />
+                        <input 
+                          className={listStyles.addInput} 
+                          placeholder="0g" 
+                          value={newItemWeights[cat.id] || ""}
+                          onChange={(e) => setNewItemWeights({ ...newItemWeights, [cat.id]: e.target.value })}
+                          onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
+                        />
+                        <input 
+                          className={listStyles.addInput} 
+                          placeholder="1x" 
+                          value={newItemCounts[cat.id] || ""}
+                          onChange={(e) => setNewItemCounts({ ...newItemCounts, [cat.id]: e.target.value })}
+                          onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
+                        />
+                        <input 
+                          className={listStyles.addInput} 
+                          placeholder="0.00€" 
+                          value={newItemPrices[cat.id] || ""}
+                          onChange={(e) => setNewItemPrices({ ...newItemPrices, [cat.id]: e.target.value })}
+                          onKeyDown={(e) => e.key === "Enter" && addItem(cat.id)}
+                        />
+                        <button 
+                          type="button"
+                          className={listStyles.confirmAddButton} 
+                          onClick={() => addItem(cat.id)}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </SortableContext>
+                </div>
+              </DroppableCategory>
             );
           })}
 
@@ -717,6 +787,25 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
         </div>
+        {typeof window !== "undefined" &&
+          createPortal(
+            <DragOverlay zIndex={9999}>
+              {activeGear ? (
+                <div className={listStyles.itemRow}>
+                  <div className={listStyles.dragArea}>
+                    <div className={listStyles.dragHandle} style={{ cursor: "grabbing" }}>
+                      <span></span><span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                  </div>
+                  <div className={listStyles.itemName}>{activeGear.name}</div>
+                  <div className={listStyles.itemStat}>
+                    {activeGear.weight}<span className={listStyles.unit}>g</span>
+                  </div>
+                </div>
+              ) : null}
+            </DragOverlay>,
+            document.body
+          )}
       </DndContext>
 
       {/* Delete Category Modal */}

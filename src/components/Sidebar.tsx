@@ -6,10 +6,77 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import ModalPortal from "./ModalPortal";
 import styles from "../styles/Sidebar.module.css";
+import { CSS } from "@dnd-kit/utilities";
+import { 
+  DndContext, 
+  DragOverlay, 
+  closestCorners, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragOverEvent,
+  DragEndEvent,
+  defaultDropAnimationSideEffects,
+  DragStartEvent,
+  closestCenter
+} from "@dnd-kit/core";
+import { 
+  arrayMove, 
+  SortableContext, 
+  verticalListSortingStrategy,
+  useSortable
+} from "@dnd-kit/sortable";
+import {Draggable, DragDropManager} from '@dnd-kit/dom';
 
 interface Packliste {
   id: string;
   name: string;
+}
+
+interface GearItem {
+  id: string;
+  name: string;
+  weight: number;
+}
+
+function SortableGearItem({ gear }: { gear: GearItem }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: gear.id,
+    data: {
+      type: "GearItem",
+      gear,
+    },
+  });
+
+  const style = {
+    // CSS.Translate sorgt dafür, dass nur die Position verändert wird, 
+    // ohne das Item zu verzerren (Scale).
+    transform: CSS.Translate.toString(transform),
+    transition: transition || 'transform 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+    // transition: transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)',
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 999 : "auto",
+    position: "relative"/* as const */,
+    // Verhindert Textmarkierung während des Draggens
+    touchAction: "none",
+    userSelect: isDragging ? "none" : "auto",
+    cursor: isDragging ? "grabbing" : "default",
+  } as React.CSSProperties;
+
+  return (
+    <div ref={setNodeRef} style={style} className={styles.gearItem} {...attributes} {...listeners}>
+      <span className={styles.gearName}>{gear.name}</span>
+      <span className={styles.gearWeight}>{gear.weight}g</span>
+    </div>
+  );
 }
 
 export default function Sidebar() {
@@ -18,7 +85,8 @@ export default function Sidebar() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
   const [user, setUser] = useState<any>(null);
-  const [gearLibrary, setGearLibrary] = useState<{name: string, weight: number}[]>([]);
+  const [gearLibrary, setGearLibrary] = useState<GearItem[]>([]);
+  const [activeGearId, setActiveGearId] = useState<string | null>(null);
   
   // Custom Modal State
   // const [listToDelete, setListToDelete] = useState<Packliste | null>(null);
@@ -31,6 +99,11 @@ export default function Sidebar() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor)
+  );
 
   // Scroll Position speichern
   const handleScroll = () => {
@@ -206,6 +279,7 @@ export default function Sidebar() {
   const fetchGearLibrary = async (listIds?: string[]) => {
     // Falls keine IDs übergeben wurden, nutzen wir die aus dem State
     const ids = listIds || lists.map(l => l.id);
+
     if (ids.length === 0) {
       setGearLibrary([]);
       return;
@@ -213,9 +287,9 @@ export default function Sidebar() {
 
     const { data, error } = await supabase
       .from("packing_items")
-      .select("name, weight")
+      .select("id, name, weight")
       .in("list_id", ids)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching gear library:", error);
@@ -253,6 +327,31 @@ export default function Sidebar() {
       supabase.removeChannel(channel);
     };
   }, [lists]); // Re-subscribe wenn sich lists ändert (für die IDs)
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveGearId(String(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over) {
+      setActiveGearId(null);
+      return;
+    }
+
+    if (active.id !== over.id) {
+      setGearLibrary((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+
+    setActiveGearId(null);
+  };
+
+  const activeGear = gearLibrary.find((g) => g.id === activeGearId);
 
   return (
     <>
@@ -341,16 +440,35 @@ export default function Sidebar() {
 
         <div className={styles.items}>
           <div className={styles.title}>Ausrüstung</div>
-          <div className={styles.scrollArea}>
-            <nav className={styles.nav}>
-              {gearLibrary.map((gear, index) => (
-                <div key={index} className={styles.gearItem}>
-                  <span className={styles.gearName}>{gear.name}</span>
-                  <span className={styles.gearWeight}>{gear.weight}g</span>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className={styles.scrollArea}>
+              <SortableContext
+                items={gearLibrary.map((item) => item.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <nav className={styles.nav}>
+                  {gearLibrary.map((gear) => (
+                    <SortableGearItem key={gear.id} gear={gear} />
+                  ))}
+                </nav>
+              </SortableContext>
+            </div>
+
+            <DragOverlay>
+              {activeGear ? (
+                <div className={styles.gearItem}>
+                  <span className={styles.gearName}>{activeGear.name}</span>
+                  <span className={styles.gearWeight}>{activeGear.weight}g</span>
                 </div>
-              ))}
-            </nav>
-          </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
       </aside>
 
