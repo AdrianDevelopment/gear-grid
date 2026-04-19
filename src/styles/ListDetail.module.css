@@ -147,9 +147,10 @@
 
 .itemRow {
   display: grid;
-  grid-template-columns: 44px 1fr 100px 80px 100px 44px;
+  grid-template-columns: 12px 20px 1fr 100px 80px 100px 44px;
   align-items: center;
   padding: 11px 20px; /* niedrigere divs */
+  padding-left: 10px;
   background: rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 20px;
@@ -162,6 +163,49 @@
   transform: translateX(6px);
   border-color: rgba(255, 255, 255, 0.6);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.04);
+}
+
+.dragArea {
+  width: 20px;
+  height: 30px;
+  background: transparent;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dragHandle {
+  display: grid;
+  /* Erstellt zwei Spalten mit je 4px Breite */
+  grid-template-columns: repeat(2, 4px);
+  /* Erstellt drei Zeilen */
+  grid-template-rows: repeat(3, 4px);
+  /* Der Abstand zwischen den Punkten */
+  gap: 4px;
+  /* Zentrierung im Container */
+  justify-content: center;
+  align-content: center;
+  cursor: grab;
+  padding: 10px; /* Vergrößert die Klickfläche für bessere UX */
+  opacity: 0.3; /* Dezent im Hintergrund */
+  transition: opacity 0.2s ease;
+}
+
+/* Die Punkte selbst */
+.dragHandle span {
+  width: 3px;
+  height: 3px;
+  background-color: #1d1d1fc7;
+  border-radius: 50%;
+}
+
+.dragHandle:hover span {
+  background-color: #1e1e1f;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
 }
 
 .checkbox {
