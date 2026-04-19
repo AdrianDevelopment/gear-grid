@@ -18,6 +18,7 @@ export default function Sidebar() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
   const [user, setUser] = useState<any>(null);
+  const [gearLibrary, setGearLibrary] = useState<{name: string, weight: number}[]>([]);
   
   // Custom Modal State
   // const [listToDelete, setListToDelete] = useState<Packliste | null>(null);
@@ -55,6 +56,7 @@ export default function Sidebar() {
       fetchLists();
     } else {
       setLists([]);
+      setGearLibrary([]);
     }
   }, [user]);
 
@@ -85,7 +87,12 @@ export default function Sidebar() {
     if (error) {
       console.error("Error fetching lists:", error);
     } else {
-      setLists(data || []);
+      const fetchedLists = data || [];
+      setLists(fetchedLists);
+      // Nach dem Laden der Listen die Ausrüstung laden
+      if (fetchedLists.length > 0) {
+        fetchGearLibrary(fetchedLists.map(l => l.id));
+      }
     }
   };
 
@@ -111,6 +118,10 @@ export default function Sidebar() {
       console.error("Error creating list:", error);
     } else if (data) {
       setLists([...lists, data]);
+      // Falls es die erste Liste ist, Gear Library initialisieren (wird leer sein)
+      if (lists.length === 0) {
+        fetchGearLibrary([data.id]);
+      }
     }
     
     setIsAdding(false);
@@ -164,7 +175,11 @@ export default function Sidebar() {
       .eq("id", list.id);
 
     if (!error) {
-      setLists(lists.filter((l) => l.id !== list.id));
+      const newLists = lists.filter((l) => l.id !== list.id);
+      setLists(newLists);
+      // Gear Library aktualisieren (falls Items nur in dieser Liste waren)
+      fetchGearLibrary(newLists.map(l => l.id));
+      
       if (pathname === `/list/${list.id}`) {
         router.push("/");
       }
@@ -188,10 +203,62 @@ export default function Sidebar() {
     }
   };
 
+  const fetchGearLibrary = async (listIds?: string[]) => {
+    // Falls keine IDs übergeben wurden, nutzen wir die aus dem State
+    const ids = listIds || lists.map(l => l.id);
+    if (ids.length === 0) {
+      setGearLibrary([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("packing_items")
+      .select("name, weight")
+      .in("list_id", ids)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching gear library:", error);
+      return;
+    }
+
+    if (data) {
+      // Deduplizierung: Wir nutzen eine Map, um nur den ersten Treffer pro Name zu behalten
+      const uniqueItems = Array.from(
+        data.reduce((map, item) => {
+          if (!map.has(item.name.toLowerCase())) {
+            map.set(item.name.toLowerCase(), item);
+          }
+          return map;
+        }, new Map<string, any>()).values()
+      );
+      
+      setGearLibrary(uniqueItems);
+    }
+  };
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("schema-db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "packing_items" },
+        () => {
+          fetchGearLibrary(); // Neu laden bei Änderungen
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [lists]); // Re-subscribe wenn sich lists ändert (für die IDs)
+
   return (
     <>
       <aside className={styles.sidebar}>
         <div className={styles.listSection}>
+          <div className={styles.logo}>Gear Grid</div>
           <div className={styles.title}>Packlisten</div>
 
           <div 
@@ -274,10 +341,16 @@ export default function Sidebar() {
 
         <div className={styles.items}>
           <div className={styles.title}>Ausrüstung</div>
-          <nav className={styles.nav}>
-            <div className={styles.link}>Kategorien</div>
-            <div className={styles.link}>Statistiken</div>
-          </nav>
+          <div className={styles.scrollArea}>
+            <nav className={styles.nav}>
+              {gearLibrary.map((gear, index) => (
+                <div key={index} className={styles.gearItem}>
+                  <span className={styles.gearName}>{gear.name}</span>
+                  <span className={styles.gearWeight}>{gear.weight}g</span>
+                </div>
+              ))}
+            </nav>
+          </div>
         </div>
       </aside>
 

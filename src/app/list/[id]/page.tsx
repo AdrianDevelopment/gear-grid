@@ -389,14 +389,17 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                       setTempValue(item.weight.toString());
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
                       {editingCell?.id === item.id && editingCell?.field === "weight" ? (
                         <input 
                           autoFocus
                           type="number"
                           className={listStyles.inlineInputSmall}
                           value={tempValue}
-                          onChange={(e) => setTempValue(e.target.value)}
+                          style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 6) setTempValue(e.target.value);
+                          }}
                           onBlur={() => updateItemField(item, "weight", parseInt(tempValue) || 0)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") updateItemField(item, "weight", parseInt(tempValue) || 0);
@@ -418,14 +421,17 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                       setTempValue(item.count.toString());
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
                       {editingCell?.id === item.id && editingCell?.field === "count" ? (
                         <input 
                           autoFocus
                           type="number"
                           className={listStyles.inlineInputSmall}
                           value={tempValue}
-                          onChange={(e) => setTempValue(e.target.value)}
+                          style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 4) setTempValue(e.target.value);
+                          }}
                           onBlur={() => updateItemField(item, "count", parseInt(tempValue) || 1)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") updateItemField(item, "count", parseInt(tempValue) || 1);
@@ -447,7 +453,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                       setTempValue(item.price.toString());
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', maxWidth: '100%' }}>
                       {editingCell?.id === item.id && editingCell?.field === "price" ? (
                         <input 
                           autoFocus
@@ -455,7 +461,10 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                           step="0.01"
                           className={listStyles.inlineInputSmall}
                           value={tempValue}
-                          onChange={(e) => setTempValue(e.target.value)}
+                          style={{ width: `${Math.max(tempValue.length, 1) + 1}ch` }}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 5) setTempValue(e.target.value);
+                          }}
                           onBlur={() => updateItemField(item, "price", parseFloat(tempValue) || 0)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") updateItemField(item, "price", parseFloat(tempValue) || 0);
