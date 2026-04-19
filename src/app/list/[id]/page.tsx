@@ -16,7 +16,8 @@ import {
   useSensor, 
   useSensors,
   DragOverEvent,
-  DragEndEvent
+  DragEndEvent,
+  defaultDropAnimationSideEffects
 } from "@dnd-kit/core";
 import { 
   arrayMove, 
@@ -24,6 +25,9 @@ import {
   verticalListSortingStrategy,
   useSortable
 } from "@dnd-kit/sortable";
+import {
+  restrictToVerticalAxis,
+} from "@dnd-kit/modifiers";
 
 interface Category {
   id: string;
@@ -72,26 +76,33 @@ function SortableItem({ item, children }: { item: Item, children: React.ReactNod
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    // Macht das Item leicht transparent und hebt es an, während es gezogen wird
-    opacity: isDragging ? 0.4 : 1, 
+    // CSS.Translate sorgt dafür, dass nur die Position verändert wird, 
+    // ohne das Item zu verzerren (Scale).
+    transform: CSS.Translate.toString(transform),
+    transition: transition || 'transform 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+    // transition: transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)',
+    opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 999 : "auto",
-    position: isDragging ? "relative" : "static",
+    position: "relative"/* as const */,
+    // Verhindert Textmarkierung während des Draggens
+    touchAction: "none",
+    userSelect: isDragging ? "none" : "auto",
+    cursor: isDragging ? "grabbing" : "default",
   } as React.CSSProperties;
 
   return (
     <div ref={setNodeRef} style={style} className={listStyles.itemRow}>
-      {/* WICHTIG: Die {attributes} und {listeners} kommen NUR an dein Drag-Handle, 
-        damit man im restlichen Item noch Text markieren oder Inputs klicken kann!
-      */}
       <div className={listStyles.dragArea}>
-        <div className={listStyles.dragHandle} {...attributes} {...listeners}>
+        {/* Cursor-Style direkt am Handle */}
+        <div 
+          className={listStyles.dragHandle} 
+          {...attributes} 
+          {...listeners}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        >
           <span></span><span></span><span></span><span></span><span></span><span></span>
         </div>
       </div>
-      
-      {/* Hier wird der Rest deiner Row (Checkbox, Name, Inputs etc.) gerendert */}
       {children} 
     </div>
   );
@@ -151,7 +162,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // Verhindert, dass ein normaler Klick als Drag gewertet wird
+        distance: 8, // Etwas höherer Schwellenwert für flüssigeren Start
       },
     }),
     useSensor(KeyboardSensor)
@@ -167,24 +178,23 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
     if (activeId === overId) return;
 
-    const isActiveItem = active.data.current?.type === "Item";
-    const isOverItem = over.data.current?.type === "Item";
+    const activeItem = items.find(i => i.id === activeId);
+    const overItem = items.find(i => i.id === overId);
 
-    if (!isActiveItem) return;
+    if (!activeItem || !overItem) return;
 
-    // Item über ein anderes Item ziehen
-    if (isActiveItem && isOverItem) {
+    // Nur verschieben, wenn wir in eine andere Kategorie kommen oder die Position sich ändert
+    if (activeItem.category_id !== overItem.category_id) {
       setItems((prev) => {
-        const activeIndex = prev.findIndex((t) => t.id === activeId);
-        const overIndex = prev.findIndex((t) => t.id === overId);
+        const activeIndex = prev.findIndex((i) => i.id === activeId);
+        const overIndex = prev.findIndex((i) => i.id === overId);
 
-        if (prev[activeIndex].category_id !== prev[overIndex].category_id) {
-          const updatedItems = [...prev];
-          // Ändere die Kategorie des gezogenen Items optimistisch
-          updatedItems[activeIndex].category_id = prev[overIndex].category_id;
-          return arrayMove(updatedItems, activeIndex, overIndex);
-        }
-        return arrayMove(prev, activeIndex, overIndex);
+        // Wir updaten die category_id des Items im State sofort, 
+        // damit der SortableContext reagiert
+        const newItems = [...prev];
+        newItems[activeIndex] = { ...newItems[activeIndex], category_id: overItem.category_id };
+
+        return arrayMove(newItems, activeIndex, overIndex);
       });
     }
   };
@@ -456,6 +466,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCorners} 
+        modifiers={[restrictToVerticalAxis]}
         onDragOver={handleDragOver} 
         onDragEnd={handleDragEnd}
       >
