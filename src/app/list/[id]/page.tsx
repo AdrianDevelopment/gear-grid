@@ -88,7 +88,7 @@ function SortableItem({ item, children }: { item: Item, children: React.ReactNod
     // CSS.Translate sorgt dafür, dass nur die Position verändert wird, 
     // ohne das Item zu verzerren (Scale).
     transform: CSS.Translate.toString(transform),
-    transition: transition || 'transform 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+    // transition: transition,
     // transition: transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 9999 : "auto",
