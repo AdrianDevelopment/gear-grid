@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding: 40px 16px;
+  padding: 16px 16px;
   background: rgba(225, 225, 225, 0.1);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -20,12 +20,22 @@
   border-right: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-.title {
+.logo {
   font-size: 1.6rem;
   font-weight: 700;
+  letter-spacing: 0.1rem;
   color: #1d1d1f;
   padding: 0 12px;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 530;
+  color: #1d1d1fe7;
+  padding: 0 12px;
+  margin-bottom: 15px;
 }
 
 .listSection {
@@ -62,7 +72,6 @@
   gap: 8px;
   padding-right: 4px; /* "Sicherheitsabstand" für den 4px Hover-Shift */
 }
-
 
 .link, .editItem {
   all: unset;
@@ -117,7 +126,6 @@
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
-
 
 /* Modal Styles */
 .modalOverlay {
@@ -217,7 +225,7 @@
   all: unset;
   width: 100%;
   background: transparent;
-  border-bottom: #1c1c1e solid 1px;
+  border-bottom: rgba(29, 29, 31, 0.6) solid 1px;
   padding: 4px 8px;
   color: #1d1d1f;
   font-weight: 500;
@@ -253,12 +261,70 @@
   transform: scale(1.03);
 }
 
-
 .icon {
   width: 18px;
   height: 18px;
 }
 
 .items {
-  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0; /* Wichtig für flex scroll */
+}
+
+.items .scrollArea {
+  max-height: none; /* In der unteren Sektion darf es den Rest füllen */
+  flex: 1;
+}
+
+/* Container für ein einzelnes Ausrüstungsteil */
+.gearItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  cursor: default;
+  color: rgba(29, 29, 31, 0.8);
+  font-weight: 500;
+  cursor: grab;
+}
+
+/* Hover-Effekt für die Sidebar-Items */
+.gearItem:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #1d1d1f;
+  transform: translateX(4px);
+}
+
+.gearItem:active {
+  background: rgba(255, 255, 255, 0.4);
+  color: #1d1d1f;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  cursor: grabbing;
+}
+
+/* Der Name des Items */
+.gearName {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(29, 29, 31, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* Das Gewicht (dezent rechts daneben) */
+.gearWeight {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(29, 29, 31, 0.5); /* Schön dezent grau */
+  background: rgba(0, 0, 0, 0.05); /* Kleiner Badge-Hintergrund */
+  padding: 2px 6px;
+  border-radius: 6px;
 }
