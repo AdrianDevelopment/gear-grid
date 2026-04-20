@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gear Grid – Der ultimative Packlisten-Planer
 
-## Getting Started
+Gear Grid ist eine hochmoderne Web-App für Outdoor-Enthusiasten, Wanderer und Reisende, die ihr Gepäck bis auf das letzte Gramm optimieren wollen. Mit einer intuitiven Drag-and-Drop-Oberfläche und Echtzeit-Statistiken hilft dir Gear Grid dabei, dein Setup zu perfektionieren.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Intuitives Dashboard: Behalte das Gesamtgewicht deines Setups immer im Blick.
+- Parallax-Hintergründe: Ein dynamisches Interface mit anpassbaren Backgrounds für den perfekten Vibe.
+- Gear Library: Erstelle eine zentrale Bibliothek deiner Ausrüstung und ziehe Gegenstände einfach per Drag-and-Drop in verschiedene Listen.
+- Kategorien-Management: Organisiere dein Equipment in farblich markierte Kategorien (z. B. Küche, Schlafen, Kleidung).
+- Gewichtsanalyse: Automatische Berechnung von Basisgewicht, verbrauchbarem Gewicht und Gesamtgewicht inklusive Visualisierung.
+- Modernes Dark-Glass-Design: Eine Benutzeroberfläche im edlen iOS-Stil mit Blur-Effekten und flüssigen Animationen.
+- Sicherer Auth: Volle Kontrolle über deine Daten dank Supabase-Authentifizierung.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Frontend: Next.js (App Router)
+- Backend/DB: Supabase (PostgreSQL & Auth)
+- Styling: CSS Modules mit Fokus auf Glassmorphism
+- Drag & Drop: @dnd-kit
+- Runtime: Bun – für blitzschnelle Entwicklung
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Installation & Start
 
-## Learn More
+- die Webseite ist aktuell über Vercel free tier gehostet
+- URL: https://gear-grid-three.vercel.app
 
-To learn more about Next.js, take a look at the following resources:
+## Datenschutzerklärung (Kurzfassung)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Der Schutz deiner Daten ist uns wichtig. Hier ist das Wichtigste in Kürze:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Datenverarbeitung: Wir speichern nur Daten, die für die Funktion der App notwendig sind (E-Mail-Adresse für den Login, deine erstellten Packlisten und Ausrüstungsgegenstände).
+- Dienstleister: Zur Bereitstellung der Datenbank und Authentifizierung nutzen wir Supabase. Dabei werden technisch notwendige Cookies gesetzt, um dich eingeloggt zu halten.
+- Kein Tracking: Wir nutzen keine Werbe-Tracker oder Analyse-Tools von Drittanbietern.
+- Sicherheit: Deine Passwörter werden verschlüsselt von Supabase verwaltet; wir haben zu keinem Zeitpunkt Zugriff auf dein Klartext-Passwort.
 
-## Deploy on Vercel
+## Vibe Check
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Dieses Projekt wurde mit KI-gevibecoded. 🤖✨
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Lizenz
+
+Dieses Projekt ist unter der MIT-Lizenz lizenziert. Siehe die LICENSE Datei für Details.
+
+### Happy Packing! Möge dein Basisgewicht immer unter 5kg bleiben. 🏔️
