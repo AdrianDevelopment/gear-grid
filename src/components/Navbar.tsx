@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ChangeEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import AuthModal from "./AuthModal";
@@ -20,6 +20,7 @@ export default function Navbar() {
   const importRef = useRef<HTMLDivElement>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -271,6 +272,109 @@ export default function Navbar() {
     }
   };
 
+  const downloadJSON = (data: any, fileName: string) => {
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportJSON = async () => {
+    const id = pathname.startsWith("/list/") ? pathname.split("/").pop() : null;
+    if (!id) return;
+
+    try {
+      const { data: list } = await supabase.from("packing_lists").select("name").eq("id", id).single();
+      const { data: categories } = await supabase.from("packing_categories").select("*").eq("list_id", id);
+      const { data: items } = await supabase.from("packing_items").select("*").eq("list_id", id);
+
+      // Datenstruktur für den Export aufbereiten
+      const exportData = {
+        name: list?.name || "Importierte Liste",
+        categories: categories?.map(cat => ({
+          name: cat.name,
+          items: items?.filter(item => item.category_id === cat.id).map(item => ({
+            name: item.name,
+            count: item.count,
+            weight: item.weight
+          }))
+        }))
+      };
+
+      downloadJSON(exportData, `${exportData.name}.json`);
+      setIsExportOpen(false);
+    } catch (err) {
+      console.error("Export fehlgeschlagen", err);
+    }
+  };
+
+  const handleImportJSON = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Diese Farben müssen exakt dieselben wie in deiner page.tsx sein
+    const CATEGORY_COLORS = [
+      "#5856D6", "#007AFF", "#34C759", "#FF2D55", "#FF9500", 
+      "#AF52DE", "#5AC8FA", "#FF3B30", "#64D2FF", "#FFCC00"
+    ];
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const json_data = JSON.parse(e.target?.result as string);
+        
+        const { data: new_list, error: list_error } = await supabase
+          .from("packing_lists")
+          .insert({ name: json_data.name, user_id: user.id })
+          .select().single();
+
+        if (list_error) throw list_error;
+
+        if (json_data.categories) {
+          // Wir nutzen den Index 'i', um die Farbe auszuwählen
+          for (let i = 0; i < json_data.categories.length; i++) {
+            const cat = json_data.categories[i];
+            const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length]; // Farbe berechnen!
+
+            const { data: new_cat, error: cat_error } = await supabase
+              .from("packing_categories")
+              .insert({ 
+                name: cat.name, 
+                list_id: new_list.id,
+                color: color // HIER wurde die Farbe vorher vergessen
+              })
+              .select().single();
+
+            if (cat_error) throw cat_error;
+
+            if (cat.items && cat.items.length > 0) {
+              const items_to_insert = cat.items.map((item: any) => ({
+                name: item.name,
+                count: item.count || 1,
+                weight: item.weight || 0,
+                list_id: new_list.id,
+                category_id: new_cat.id
+              }));
+              await supabase.from("packing_items").insert(items_to_insert);
+            }
+            // Kleiner Delay für saubere Zeitstempel
+            await new Promise(res => setTimeout(res, 50)); 
+          }
+        }
+        window.location.href = `/list/${new_list.id}`;
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <>
       <header className={styles.navbar}>
@@ -292,8 +396,16 @@ export default function Navbar() {
                 <div className={styles.userInfo}>
                   <div className={styles.userEmail}>Import</div>
                 </div>
-                <button className={styles.dropdownItem} type="button">
-                  <span>Bald verfügbar</span>
+                <div className={styles.horizontalLine} />
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  style={{ display: "none" }} 
+                  accept=".json" 
+                  onChange={handleImportJSON} 
+                />
+                <button className={styles.dropdownItem} type="button" onClick={() => fileInputRef.current?.click()}>
+                  <span>JSON Datei auswählen</span>
                 </button>
               </div>
             )}
@@ -312,12 +424,13 @@ export default function Navbar() {
                 <div className={styles.userInfo}>
                   <div className={styles.userEmail}>Export</div>
                 </div>
+                <div className={styles.horizontalLine} />
                 <button 
                   className={styles.dropdownItem} 
                   type="button"
                   onClick={handleExportPDF}
                 >
-                  <svg 
+                  {/* <svg 
                     style={{ width: "16px", height: "16px", marginRight: "8px" }} 
                     viewBox="0 0 24 24" 
                     fill="none" 
@@ -331,8 +444,11 @@ export default function Navbar() {
                     <line x1="16" y1="13" x2="8" y2="13" />
                     <line x1="16" y1="17" x2="8" y2="17" />
                     <polyline points="10 9 9 9 8 9" />
-                  </svg>
+                  </svg> */}
                   <span>Als PDF exportieren</span>
+                </button>
+                <button className={styles.dropdownItem} onClick={handleExportJSON}>
+                  <span>Als JSON exportieren</span>
                 </button>
               </div>
             )}
@@ -355,6 +471,7 @@ export default function Navbar() {
                 <div className={styles.userInfo}>
                   <div className={styles.userEmail}>Einstellungen</div>
                 </div>
+                <div className={styles.horizontalLine} />
                 
                 {/* <button className={styles.dropdownItem} type="button">
                   <span>Einheit: Metrisch (kg/g)</span>

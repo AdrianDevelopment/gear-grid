@@ -446,11 +446,12 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   }, [items]); // <--- Die Abhängigkeit: Nur wenn items sich ändern
 
   const chartData = useMemo(() => {
-    return categories.map(cat => {
+    return categories.map((cat, index) => {
       const weight = items
         .filter(i => i.category_id === cat.id)
         .reduce((sum, i) => sum + (i.weight * i.count), 0);
-      return { name: cat.name, value: weight, color: cat.color };
+      const displayColor = cat.color || CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+      return { name: cat.name, value: weight, color: displayColor };
     }).filter(d => d.value > 0);
   }, [categories, items]); // Berechnen, wenn Kategorien oder Items sich ändern
 
@@ -539,14 +540,15 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         onDragEnd={handleDragEnd}
       >
         <div className={listStyles.scrollContainer}>
-          {categories.map(cat => {
+          {categories.map((cat, index) => {
             const categoryItems = items.filter(i => i.category_id === cat.id);
+            const displayColor = cat.color || CATEGORY_COLORS[index % CATEGORY_COLORS.length];
             
             return (
               <DroppableCategory key={cat.id} cat={cat}>
                 <div key={cat.id} className={listStyles.categoryGroup}>
                   <div className={listStyles.categoryHeader}>
-                    <h2 className={listStyles.categoryTitle} style={{ color: cat.color }}>{cat.name}</h2>
+                    <h2 className={listStyles.categoryTitle} style={{ color: displayColor }}>{cat.name}</h2>
                     <div className={listStyles.categoryLine} />
                     <button className={listStyles.deleteButtonSmall} onClick={() => setCategoryToDelete(cat)}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

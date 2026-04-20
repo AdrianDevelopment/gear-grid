@@ -68,7 +68,7 @@ function SortableGearItem({ gear }: { gear: GearItem }) {
     // Verhindert Textmarkierung während des Draggens
     touchAction: "none",
     userSelect: isDragging ? "none" : "auto",
-    cursor: isDragging ? "grabbing" : "default",
+    cursor: isDragging ? "grabbing" : "grab",
   } as React.CSSProperties;
 
   return (
