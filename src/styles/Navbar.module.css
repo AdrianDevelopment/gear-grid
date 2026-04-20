@@ -89,8 +89,11 @@
   top: calc(100% + 12px);
   right: 11px;
   width: 240px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  /* background: #1c1c1e; */
+  background: rgba(28, 28, 30, 0.94);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); */
   border-radius: 18px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
   padding: 8px;
@@ -100,13 +103,6 @@
   z-index: 9999;
   animation: slideDown 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-origin: top right;
-}
-
-@supports (backdrop-filter: blur(1px)) {
-  .dropdown {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(15px);
-  }
 }
 
 .userInfo {
@@ -119,8 +115,8 @@
 .userEmail {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1d1d1f;
-  opacity: 0.5;
+  color: #fff;
+  opacity: 0.4;
   letter-spacing: 0.02em;
 }
 
@@ -130,7 +126,7 @@
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
-  color: #1d1d1f;
+  color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
@@ -139,8 +135,8 @@
 }
 
 .dropdownItem:hover {
-  background: #f5f5f7;
-  color: #000;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .logout {
@@ -153,48 +149,12 @@
   color: #ff3b30 !important
 }
 
-@media (prefers-color-scheme: dark) {
-  .dropdown {
-    background: #1c1c1e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-  }
-
-  @supports (backdrop-filter: blur(1px)) {
-    .dropdown {
-      background: rgba(28, 28, 30, 0.94);
-      backdrop-filter: blur(20px);
-    }
-  }
-
-  .userEmail {
-    color: #fff;
-    opacity: 0.4;
-  }
-
-  .dropdownItem {
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  .dropdownItem:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-  }
-}
-
 .horizontalLine {
   width: 100%;
   height: 1px;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.08);
   margin: 2px 0;
 }
-
-@media (prefers-color-scheme: dark) {
-  .horizontalLine {
-    background: rgba(255, 255, 255, 0.08);
-  }
-}
-
 
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px) scale(0.95); }
