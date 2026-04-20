@@ -276,24 +276,44 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
     if (activeId !== overId) {
       // Finaler State nach dem Drop
+      // setItems((prev) => {
+      //   const activeIndex = prev.findIndex((t) => t.id === activeId);
+      //   const overIndex = prev.findIndex((t) => t.id === overId);
+        
+      //   const newItems = arrayMove(prev, activeIndex, overIndex);
+        
+      //   // --- SUPABASE BATCH UPDATE ---
+      //   // Hier müsstest du idealerweise die neue Reihenfolge an Supabase senden.
+      //   // Ein einfacher Weg ist, das gezogene Item mit der neuen category_id und position zu updaten.
+      //   const movedItem = newItems.find(i => i.id === activeId);
+      //   if (movedItem) {
+      //      supabase.from("packing_items")
+      //        .update({ category_id: movedItem.category_id })
+      //        .eq("id", movedItem.id)
+      //        .then(({ error }) => { if (error) console.error(error) });
+      //   }
+        
+      //   return newItems;
       setItems((prev) => {
-        const activeIndex = prev.findIndex((t) => t.id === activeId);
-        const overIndex = prev.findIndex((t) => t.id === overId);
-        
-        const newItems = arrayMove(prev, activeIndex, overIndex);
-        
-        // --- SUPABASE BATCH UPDATE ---
-        // Hier müsstest du idealerweise die neue Reihenfolge an Supabase senden.
-        // Ein einfacher Weg ist, das gezogene Item mit der neuen category_id und position zu updaten.
-        const movedItem = newItems.find(i => i.id === activeId);
-        if (movedItem) {
-           supabase.from("packing_items")
-             .update({ category_id: movedItem.category_id })
-             .eq("id", movedItem.id)
-             .then(({ error }) => { if (error) console.error(error) });
-        }
-        
-        return newItems;
+        const oldIndex = prev.findIndex((i) => i.id === active.id);
+        const newIndex = prev.findIndex((i) => i.id === over.id);
+        const newArray = arrayMove(prev, oldIndex, newIndex);
+
+        // 2. Datenbank-Update im Hintergrund
+        // Wir mappen über das neue Array und schicken die neuen sort_order Werte
+        const updates = newArray.map((item, index) => ({
+          ...item,
+          sort_order: index,
+        }));
+
+        console.log("Sende folgende Updates an Supabase:", updates);
+
+        // Batch-Update in Supabase (upsert nutzt den Primärschlüssel 'id')
+        supabase.from("packing_items").upsert(updates).then(({ error }) => {
+          if (error) console.error("Fehler beim Speichern der Reihenfolge:", error);
+        });
+
+        return newArray;
       });
     }
   };
@@ -302,8 +322,8 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     setLoading(true);
     try {
       const [catsRes, itemsRes] = await Promise.all([
-        supabase.from("packing_categories").select("*").eq("list_id", resolvedParams.id).order("created_at", { ascending: true }),
-        supabase.from("packing_items").select("*").eq("list_id", resolvedParams.id).order("created_at", { ascending: true })
+        supabase.from("packing_categories").select("*").eq("list_id", resolvedParams.id).order("sort_order", { ascending: true }),
+        supabase.from("packing_items").select("*").eq("list_id", resolvedParams.id).order("sort_order", { ascending: true })
       ]);
 
       if (catsRes.data) setCategories(catsRes.data);

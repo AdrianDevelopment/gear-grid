@@ -134,7 +134,7 @@ export default function Navbar() {
         .from("packing_categories")
         .select("*")
         .eq("list_id", id)
-        .order("created_at", { ascending: true });
+        .order("sort_order", { ascending: true });
 
       console.log("Categories data:", categories, "Error:", catError);
       if (catError) {
@@ -146,7 +146,7 @@ export default function Navbar() {
         .from("packing_items")
         .select("*")
         .eq("list_id", id)
-        .order("created_at", { ascending: true });
+        .order("sort_order", { ascending: true });
 
       console.log("Items data:", items, "Error:", itemsError);
       if (itemsError) {
@@ -291,8 +291,8 @@ export default function Navbar() {
 
     try {
       const { data: list } = await supabase.from("packing_lists").select("name").eq("id", id).single();
-      const { data: categories } = await supabase.from("packing_categories").select("*").eq("list_id", id);
-      const { data: items } = await supabase.from("packing_items").select("*").eq("list_id", id);
+      const { data: categories } = await supabase.from("packing_categories").select("*").eq("list_id", id).order("sort_order", { ascending: true });
+      const { data: items } = await supabase.from("packing_items").select("*").eq("list_id", id).order("sort_order", { ascending: true });
 
       // Datenstruktur für den Export aufbereiten
       const exportData = {
@@ -347,21 +347,27 @@ export default function Navbar() {
               .insert({ 
                 name: cat.name, 
                 list_id: new_list.id,
-                color: color // HIER wurde die Farbe vorher vergessen
+                color: color,
+                sort_order: i
               })
               .select().single();
 
             if (cat_error) throw cat_error;
 
             if (cat.items && cat.items.length > 0) {
-              const items_to_insert = cat.items.map((item: any) => ({
+              const items_to_insert = cat.items.map((item: any, item_index: number) => ({
                 name: item.name,
                 count: item.count || 1,
                 weight: item.weight || 0,
                 list_id: new_list.id,
-                category_id: new_cat.id
+                category_id: new_cat.id,
+                sort_order: item_index
               }));
-              await supabase.from("packing_items").insert(items_to_insert);
+              const { error: items_error } = await supabase
+                .from("packing_items")
+                .insert(items_to_insert);
+                
+              if (items_error) throw items_error;
             }
             // Kleiner Delay für saubere Zeitstempel
             await new Promise(res => setTimeout(res, 50)); 
