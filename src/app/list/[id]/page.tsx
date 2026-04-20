@@ -338,15 +338,27 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const addCategory = async () => {
     if (!newCategoryName.trim()) return;
     const color = CATEGORY_COLORS[categories.length % CATEGORY_COLORS.length];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("packing_categories")
-      .insert([{ name: newCategoryName.trim(), list_id: resolvedParams.id, color }])
+      .insert([{ name: newCategoryName.trim(), list_id: resolvedParams.id, color, sort_order: categories.length }])
       .select()
       .single();
+
+    if (error) {
+      console.error("Fehler beim Erstellen der Kategorie: ", error);
+      return;
+    }
 
     if (data) {
       setCategories([...categories, data]);
       setNewCategoryName("");
+
+      setTimeout(() => {
+        const newInputField = nameInputRefs.current[data.id];
+        if (newInputField) {
+          newInputField.focus();
+        }
+      }, 100)
     }
   };
 

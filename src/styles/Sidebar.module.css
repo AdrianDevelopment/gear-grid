@@ -210,6 +210,72 @@
   box-shadow: 0 6px 15px rgba(255, 59, 48, 0.3);
 }
 
+/* Sektionen im Impressum */
+.legalSection {
+  margin-bottom: 24px;
+}
+
+.legalSubHeading {
+  color: #007AFF; /* Das lebendige iOS-Blau */
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modalTextSmall {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* Scroll-Bereich Anpassung */
+.modalScrollContent {
+  text-align: left;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 12px;
+  margin: 16px 0;
+  /* Maskierung am Ende für weichen Übergang */
+  mask-image: linear-gradient(to bottom, black 93%, transparent 100%);
+}
+
+/* Custom Scrollbar im Auth-Style */
+.modalScrollContent::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modalScrollContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalScrollContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+/* Button Anpassungen für Impressum */
+.modalButtonsFixed {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.primaryButton {
+  background: #007AFF;
+  color: #fff;
+  width: 100%;
+  /* box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3); */
+}
+
+.primaryButton:hover {
+  background: #0063cc;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  /* box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4); */
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -261,7 +327,7 @@
   transform: scale(1.03);
 }
 
-.icon {
+.listIcon {
   width: 18px;
   height: 18px;
 }
@@ -327,4 +393,57 @@
   background: rgba(0, 0, 0, 0.05); /* Kleiner Badge-Hintergrund */
   padding: 2px 6px;
   border-radius: 6px;
+}
+
+/* In deiner CSS Module Datei */
+
+.footerIcons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  color: #1d1d1f;
+  gap: 12px;
+  z-index: 100;
+}
+
+.iconButton {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.iconButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.iconButton:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(0);
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.2));
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+  vertical-align: middle;
+  color: #1d1d1f;
+}
+
+.icon:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
 }
