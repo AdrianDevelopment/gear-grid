@@ -91,7 +91,7 @@ export default function Sidebar() {
   // Custom Modal State
   // const [listToDelete, setListToDelete] = useState<Packliste | null>(null);
   const [modalConfig, setModalConfig] = useState<{
-    type: "delete" | "auth";
+    type: "delete" | "auth" | "impressum"; // impressum hinzugefügt
     list?: Packliste;
   } | null>(null);
   
@@ -236,6 +236,10 @@ export default function Sidebar() {
     e.preventDefault();
     e.stopPropagation();
     setModalConfig({ type: "delete", list });
+  };
+
+  const openImpressum = () => {
+    setModalConfig({ type: "impressum" });
   };
 
   const confirmDelete = async () => {
@@ -398,7 +402,7 @@ export default function Sidebar() {
                       onClick={(e) => openDeleteModal(e, list)}
                       title="Liste löschen"
                     >
-                      <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className={styles.listIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                         <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -430,7 +434,7 @@ export default function Sidebar() {
               onClick={handleAddClick}
               title="Neue Liste erstellen"
             >
-              <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className={styles.listIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
@@ -470,6 +474,31 @@ export default function Sidebar() {
             </DragOverlay>
           </DndContext>
         </div>
+        <div className={styles.footerIcons}>
+          {/* Info / Impressum */}
+          <button onClick={openImpressum} className={styles.iconButton} title="Impressum">
+            <svg className={styles.icon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </button>
+
+          {/* Email */}
+          <a href="mailto:dev.lindstedt@gmail.com" className={styles.iconButton} title="Kontakt">
+            <svg className={styles.icon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </a>
+
+          {/* GitHub / Feedback */}
+          <a href="https://github.com/AdrianDevelopment/gear-grid/issues/new/choose" target="_blank" rel="noopener noreferrer" className={styles.iconButton} title="Feedback auf GitHub">
+            <svg className={styles.icon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+          </a>
+        </div>
       </aside>
 
       {/* Custom Confirmation Modal */}
@@ -477,8 +506,54 @@ export default function Sidebar() {
         <ModalPortal>
           <div className={styles.modalOverlay} onClick={() => setModalConfig(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-              
-              {modalConfig.type === "delete" ? (
+              {/* Ergänzung im ModalPortal Bereich */}
+              {modalConfig.type === "impressum" && (
+                <>
+                  <h3 className={styles.modalTitle}>Rechtliche Informationen</h3>
+                  <div className={styles.modalScrollContent}>
+                    
+                    <section className={styles.legalSection}>
+                      <h4 className={styles.legalSubHeading}>Impressum</h4>
+                      <p className={styles.modalTextSmall}>
+                        <strong>Angaben gemäß § 5 TMG:</strong><br />
+                        Dies ist eine rein private Website ohne kommerzielle Interessen.
+                        Sie dient ausschließlich persönlichen Zwecken.
+                      </p>
+                      <p className={styles.modalTextSmall}>
+                        <strong>Kontakt:</strong><br />
+                        E-Mail: dev.lindstedt@gmail.com
+                      </p>
+                    </section>
+
+                    <section className={styles.legalSection}>
+                      <h4 className={styles.legalSubHeading}>Datenschutz</h4>
+                      <p className={styles.modalTextSmall}>
+                        Diese Anwendung nutzt <strong>Supabase</strong> zur Authentifizierung und Datenspeicherung. 
+                        Dabei werden technisch notwendige Daten verarbeitet, um den Dienst bereitzustellen. 
+                        Es findet kein Tracking zu Werbezwecken statt.
+                      </p>
+                    </section>
+
+                    <section className={styles.legalSection}>
+                      <h4 className={styles.legalSubHeading}>Haftung für Links</h4>
+                      <p className={styles.modalTextSmall}>
+                        Unser Angebot enthält Links zu externen Webseiten Dritter. 
+                        Auf deren Inhalte haben wir keinen Einfluss und übernehmen daher keine Gewähr.
+                      </p>
+                    </section>
+                  </div>
+
+                  <div className={styles.modalButtonsFixed}>
+                    <button 
+                      className={`${styles.modalButton} ${styles.primaryButton}`} 
+                      onClick={() => setModalConfig(null)}
+                    >
+                      Schließen
+                    </button>
+                  </div>
+                </>
+              )}
+              {modalConfig.type === "delete" && (
                 <>
                   <h3 className={styles.modalTitle}>Liste löschen?</h3>
                   <p className={styles.modalText}>
@@ -493,7 +568,8 @@ export default function Sidebar() {
                     </button>
                   </div>
                 </>
-              ) : (
+              )}
+              {modalConfig.type === "auth" && (
                 <>
                   <h3 className={styles.modalTitle}>Anmeldung erforderlich</h3>
                   <p className={styles.modalText}>
@@ -513,7 +589,6 @@ export default function Sidebar() {
                   </div>
                 </>
               )}
-
             </div>
           </div>
         </ModalPortal>

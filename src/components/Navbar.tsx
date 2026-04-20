@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { useBackground } from "./DashboardLayout";
 import AuthModal from "./AuthModal";
 import styles from "../styles/Navbar.module.css";
 import jsPDF from "jspdf";
+import { string } from "zod";
 
 export default function Navbar() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function Navbar() {
   const exportRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
+  const { setBgImage } = useBackground();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -381,6 +384,10 @@ export default function Navbar() {
     reader.readAsText(file);
   };
 
+  const changeBackground = (newUrl: string) => {
+    setBgImage(newUrl);
+  };
+
   return (
     <>
       <header className={styles.navbar}>
@@ -478,26 +485,23 @@ export default function Navbar() {
                   <div className={styles.userEmail}>Einstellungen</div>
                 </div>
                 <div className={styles.horizontalLine} />
-                
-                {/* <button className={styles.dropdownItem} type="button">
-                  <span>Einheit: Metrisch (kg/g)</span>
+                <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background1.jpg")}>
+                  <span>Hintergrund 1</span>
                 </button>
-                
-                <button className={styles.dropdownItem} type="button">
-                  <span>Währung: Euro (€)</span>
+                <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background2.jpg")}>
+                  <span>Hintergrund 2</span>
                 </button>
-                
-                <div className={styles.horizontalLine} />
-                
-                <button className={styles.dropdownItem} type="button">
-                  <span>Erscheinungsbild: System</span>
+                <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background3.png")}>
+                  <span>Hintergrund 3</span>
                 </button>
-
-                <button className={styles.dropdownItem} type="button">
-                  <span>Sprache: Deutsch</span>
-                </button> */}
-                <button className={styles.dropdownItem} type="button">
-                  <span>Bald verfügbar</span>
+                <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background4.jpg")}>
+                  <span>Hintergrund 4</span>
+                </button>
+                <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background5.jpg")}>
+                  <span>Hintergrund 5</span>
+                </button>
+                <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background6.jpg")}>
+                  <span>Hintergrund 6</span>
                 </button>
               </div>
             )}
