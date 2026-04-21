@@ -159,10 +159,10 @@
 }
 
 .modalTitle {
-  font-size: 1.2rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .modalText {
@@ -216,9 +216,10 @@
 }
 
 .legalSubHeading {
-  color: #007AFF; /* Das lebendige iOS-Blau */
+  /* color: #007AFF; // Das lebendige iOS-Blau */
+  color: rgba(255, 255, 255, 1);
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -258,7 +259,7 @@
 
 /* Button Anpassungen für Impressum */
 .modalButtonsFixed {
-  margin-top: 8px;
+  margin-top: 18px;
   width: 100%;
 }
 
@@ -339,11 +340,62 @@
   gap: 4px;
   flex: 1;
   min-height: 0; /* Wichtig für flex scroll */
+  cursor: grab;
 }
 
 .items .scrollArea {
   max-height: none; /* In der unteren Sektion darf es den Rest füllen */
   flex: 1;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  padding: 0 12px;
+  margin-bottom: 8px;
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: rgba(29, 29, 31, 0.6);
+}
+
+.searchInput {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #1d1d1f;
+  font-size: 14px;
+}
+
+/* Animation, wenn neue Items beim Suchen auftauchen */
+.itemEnter {
+  animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Nachricht, wenn der Fuzzy Search nichts findet */
+.emptySearch {
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 16px 0;
+  font-style: italic;
+  animation: fadeIn 0.4s ease;
 }
 
 /* Container für ein einzelnes Ausrüstungsteil */
@@ -353,11 +405,11 @@
   align-items: center;
   padding: 8px 14px;
   border-radius: 12px;
-  transition: all 0.2s ease;
-  cursor: default;
+  cursor: grabbing;
   color: rgba(29, 29, 31, 0.8);
   font-weight: 500;
-  cursor: grab;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  user-select: none;
 }
 
 /* Hover-Effekt für die Sidebar-Items */
@@ -372,6 +424,24 @@
   color: #1d1d1f;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  cursor: grabbing;
+}
+
+/* Während das Item bewegt wird (der Platzhalter in der Liste) */
+.dragging {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  cursor: grabbing;
+}
+
+/* Der DragOverlay (das Item, das an der Maus klebt) */
+/* dnd-kit kopiert die Styles, aber wir können hier noch nachhelfen */
+[data-drag-overlay] .gearItem {
+  cursor: grabbing !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: scale(1.05); /* Leichtes Vergrößern beim Anheben */
+  background: white;
+  z-index: 9999;
 }
 
 /* Der Name des Items */
@@ -396,7 +466,6 @@
 }
 
 /* In deiner CSS Module Datei */
-
 .footerIcons {
   display: flex;
   flex-direction: row;
