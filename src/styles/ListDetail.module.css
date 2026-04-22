@@ -109,7 +109,9 @@
 
 .categoryTitle {
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 600;
+  font-family: var(--font-geist-sans);
+  letter-spacing: 0;
   margin: 0;
   white-space: nowrap;
 }
@@ -117,7 +119,47 @@
 .categoryLine {
   flex: 1;
   height: 1px;
-  background: rgba(0, 0, 0, 0.08);
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.arrows {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.arrowUp, .arrowDown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 20px;
+  border-radius: 8px;
+  padding: 0;
+  line-height: 0;
+  color: rgba(0, 0, 0, 0.15);
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.itemRow:hover .arrowUp, .itemRow:hover .arrowDown {
+  opacity: 1;
+}
+.categoryHeader:hover .arrowUp, .categoryHeader:hover .arrowDown {
+  opacity: 1;
+}
+
+.arrowUp:hover, .arrowDown:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.arrowUp:active, .arrowDown:active {
+  transform: scale(0.95);
 }
 
 .tableHeader {
@@ -237,6 +279,7 @@
   font-weight: 700;
   font-size: 1.05rem;
   color: #1d1d1f;
+  cursor: text;
 }
 
 .itemStat {
@@ -246,9 +289,10 @@
   overflow: hidden;
   font-size: 1rem;
   font-weight: 600;
-  font-family: inherit;
+  font-family: var(--font-geist-sans);
   letter-spacing: 0px;
   color: rgba(29, 29, 31, 0.8);
+  cursor: text;
 }
 
 .unit {
@@ -310,7 +354,7 @@
 }
 
 .horizontalLine {
-  width: 96%;
+  width: 99.8%;
   height: 1px;
   background: rgba(0, 0, 0, 0.08);
   margin-top: 4px;
@@ -489,26 +533,42 @@
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* VERBESSERTE INLINE INPUT STYLES - BEHEBT SCHRIFTART-PROBLEM */
 .inlineInput {
   all: unset;
   width: 100%;
   background: transparent;
   color: #1d1d1f;
-  font-family: inherit;
+  /* Explizite Schrift-Eigenschaften statt nur inherit */
+  font-family: var(--font-geist-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-variant-numeric: normal;
+  box-sizing: border-box;
   -moz-appearance: textfield;
+  -webkit-appearance: none;
 }
 
+/* VERBESSERTE INLINE INPUT SMALL STYLES - BEHEBT SCHRIFTART-PROBLEM */
 .inlineInputSmall {
   all: unset;
   min-width: 1ch;
   max-width: 80px;
   background: transparent;
+  border: none;
   text-align: right;
-  font-family: inherit;
-  letter-spacing: 0px;
+  /* Explizite Schrift-Eigenschaften statt nur inherit */
+  font-family: var(--font-geist-sans);
   font-size: 1rem;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  letter-spacing: 0;
+  /* font-variant-numeric: tabular-nums; */
+  box-sizing: border-box;
+  box-shadow: none;
+  -webkit-appearance: none;
   -moz-appearance: textfield;
 }
 

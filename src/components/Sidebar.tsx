@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
@@ -10,14 +10,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { 
   DndContext, 
   DragOverlay, 
-  closestCorners, 
   KeyboardSensor, 
   PointerSensor, 
   useSensor, 
   useSensors,
-  DragOverEvent,
   DragEndEvent,
-  defaultDropAnimationSideEffects,
   DragStartEvent,
   closestCenter
 } from "@dnd-kit/core";
@@ -27,7 +24,6 @@ import {
   verticalListSortingStrategy,
   useSortable
 } from "@dnd-kit/sortable";
-import {Draggable, DragDropManager} from '@dnd-kit/dom';
 
 interface Packliste {
   id: string;
@@ -50,34 +46,56 @@ function SortableGearItem({ gear }: { gear: GearItem }) {
     isDragging,
   } = useSortable({
     id: gear.id,
-    data: {
-      type: "GearItem",
-      gear,
-    },
+    data: { type: "GearItem", gear },
   });
 
-  const style = {
-    // CSS.Translate sorgt dafür, dass nur die Position verändert wird, 
-    // ohne das Item zu verzerren (Scale).
-    transform: CSS.Translate.toString(transform),
-    transition: transition || 'transform 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-    // transition: transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)',
-    opacity: isDragging ? 0.5 : 1,
+  const style: React.CSSProperties = {
+    // 1. Transform: dnd-kit nutzt Transform für die Bewegung
+    transform: CSS.Transform.toString(transform),
+    
+    // 2. Transition: WICHTIG! Nur die Transition von dnd-kit nutzen.
+    // Sie ist nur aktiv, wenn ein Item "ausweichen" muss.
+    // transition: transition,
+    
+    // 3. Status-Werte
     zIndex: isDragging ? 999 : "auto",
-    position: "relative"/* as const */,
-    // Verhindert Textmarkierung während des Draggens
-    touchAction: "none",
-    userSelect: isDragging ? "none" : "auto",
+    opacity: isDragging ? 0.3 : 1,
+    
+    // 4. Cursor: Hier im JS setzen, damit es "grabbing" bleibt, 
+    // auch wenn die Maus das Item verlässt (während des Drags)
     cursor: isDragging ? "grabbing" : "grab",
-  } as React.CSSProperties;
+    touchAction: "none",
+  };
 
   return (
-    <div ref={setNodeRef} style={style} className={styles.gearItem} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      // Wir geben eine extra Klasse 'isDragging', wenn es aktiv ist
+      className={`${styles.gearItem} ${isDragging ? styles.isDragging : ""}`}
+      {...attributes}
+      {...listeners}
+    >
       <span className={styles.gearName}>{gear.name}</span>
       <span className={styles.gearWeight}>{gear.weight}g</span>
     </div>
   );
 }
+
+// Schneller Fuzzy-Search Algorithmus
+const fuzzy_match = (pattern: string, target: string) => {
+  if (!pattern) return true;
+  const p = pattern.toLowerCase();
+  const t = target.toLowerCase();
+  let pIdx = 0;
+  let tIdx = 0;
+  
+  while (pIdx < p.length && tIdx < t.length) {
+    if (p[pIdx] === t[tIdx]) pIdx++;
+    tIdx++;
+  }
+  return pIdx === p.length;
+};
 
 export default function Sidebar() {
   const [lists, setLists] = useState<Packliste[]>([]);
@@ -88,24 +106,43 @@ export default function Sidebar() {
   const [gearLibrary, setGearLibrary] = useState<GearItem[]>([]);
   const [activeGearId, setActiveGearId] = useState<string | null>(null);
   
-  // Custom Modal State
-  // const [listToDelete, setListToDelete] = useState<Packliste | null>(null);
+  // Neue States für die Suche
+  const [search_query, setSearchQuery] = useState("");
+  
   const [modalConfig, setModalConfig] = useState<{
-    type: "delete" | "auth" | "impressum"; // impressum hinzugefügt
+    type: "delete" | "auth" | "impressum";
     list?: Packliste;
   } | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Erst nach 5 Pixeln Bewegung startet der Drag, vorher ist es ein Klick
+      },
+    }),
     useSensor(KeyboardSensor)
   );
 
-  // Scroll Position speichern
+  // Gefilterte GearLibrary basierend auf dem SearchQuery (memorized für Performance)
+  const filteredGear = useMemo(() => {
+    return gearLibrary.filter(gear => fuzzy_match(search_query, gear.name));
+  }, [gearLibrary, search_query]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setSearchQuery(""); // Eingabe löschen
+      searchInputRef.current?.blur(); // Fokus entfernen
+    } else if (e.key === "Enter") {
+      searchInputRef.current?.blur(); // Nur Fokus entfernen, Text bleibt
+    }
+  };
+
   const handleScroll = () => {
     if (scrollRef.current) {
       sessionStorage.setItem("sidebar-scroll", scrollRef.current.scrollTop.toString());
@@ -133,7 +170,6 @@ export default function Sidebar() {
     }
   }, [user]);
 
-  // Scroll Position wiederherstellen, sobald Listen geladen sind
   useEffect(() => {
     if (lists.length > 0 && scrollRef.current) {
       const savedScroll = sessionStorage.getItem("sidebar-scroll");
@@ -150,7 +186,6 @@ export default function Sidebar() {
     }
   }, [isAdding, editingId]);
 
-
   const fetchLists = async () => {
     const { data, error } = await supabase
       .from("packing_lists")
@@ -162,7 +197,6 @@ export default function Sidebar() {
     } else {
       const fetchedLists = data || [];
       setLists(fetchedLists);
-      // Nach dem Laden der Listen die Ausrüstung laden
       if (fetchedLists.length > 0) {
         fetchGearLibrary(fetchedLists.map(l => l.id));
       }
@@ -191,7 +225,6 @@ export default function Sidebar() {
       console.error("Error creating list:", error);
     } else if (data) {
       setLists([...lists, data]);
-      // Falls es die erste Liste ist, Gear Library initialisieren (wird leer sein)
       if (lists.length === 0) {
         fetchGearLibrary([data.id]);
       }
@@ -209,8 +242,6 @@ export default function Sidebar() {
   const saveRename = async () => {
     if (!editingId) return;
 
-    // Profi-Tipp: Wenn der Name leer ist, nimm den alten Namen zurück 
-    // oder verhindere das Speichern, anstatt einen leeren String zu senden.
     const trimmedName = tempName.trim();
     const oldName = lists.find(l => l.id === editingId)?.name;
 
@@ -254,25 +285,22 @@ export default function Sidebar() {
     if (!error) {
       const newLists = lists.filter((l) => l.id !== list.id);
       setLists(newLists);
-      // Gear Library aktualisieren (falls Items nur in dieser Liste waren)
       fetchGearLibrary(newLists.map(l => l.id));
       
       if (pathname === `/list/${list.id}`) {
         router.push("/");
       }
     }
-    setModalConfig(null); // Modal schließen
+    setModalConfig(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
     if (e.key === "Enter") {
       action();
     } else if (e.key === "Escape") {
-      // Wenn ein Modal offen ist, schließe nur das Modal
       if (modalConfig) {
         setModalConfig(null);
       } else {
-        // Ansonsten brich das Hinzufügen/Editieren ab
         setIsAdding(false);
         setEditingId(null);
         setTempName("");
@@ -281,7 +309,6 @@ export default function Sidebar() {
   };
 
   const fetchGearLibrary = async (listIds?: string[]) => {
-    // Falls keine IDs übergeben wurden, nutzen wir die aus dem State
     const ids = listIds || lists.map(l => l.id);
 
     if (ids.length === 0) {
@@ -293,7 +320,7 @@ export default function Sidebar() {
       .from("packing_items")
       .select("id, name, weight")
       .in("list_id", ids)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching gear library:", error);
@@ -301,7 +328,6 @@ export default function Sidebar() {
     }
 
     if (data) {
-      // Deduplizierung: Wir nutzen eine Map, um nur den ersten Treffer pro Name zu behalten
       const uniqueItems = Array.from(
         data.reduce((map, item) => {
           if (!map.has(item.name.toLowerCase())) {
@@ -322,7 +348,7 @@ export default function Sidebar() {
         "postgres_changes",
         { event: "*", schema: "public", table: "packing_items" },
         () => {
-          fetchGearLibrary(); // Neu laden bei Änderungen
+          fetchGearLibrary();
         }
       )
       .subscribe();
@@ -330,7 +356,7 @@ export default function Sidebar() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [lists]); // Re-subscribe wenn sich lists ändert (für die IDs)
+  }, [lists]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveGearId(String(event.active.id));
@@ -444,7 +470,21 @@ export default function Sidebar() {
 
         <div className={styles.items}>
           <div className={styles.title}>Ausrüstung</div>
-
+          <div className={styles.search}>
+            <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              ref={searchInputRef}
+              className={styles.searchInput}
+              placeholder="Suchen"
+              value={search_query}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchQuery("")} /* Leert das Feld beim Reinklicken */
+              onKeyDown={handleSearchKeyDown}
+            />
+          </div>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -453,13 +493,17 @@ export default function Sidebar() {
           >
             <div className={styles.scrollArea}>
               <SortableContext
-                items={gearLibrary.map((item) => item.id)}
+                items={filteredGear.map((item) => item.id)} // Nutzt jetzt die gefilterte Liste
                 strategy={verticalListSortingStrategy}
               >
                 <nav className={styles.nav}>
-                  {gearLibrary.map((gear) => (
+                  {filteredGear.map((gear) => ( // Mappt über die gefilterte Liste
                     <SortableGearItem key={gear.id} gear={gear} />
                   ))}
+                  
+                  {filteredGear.length === 0 && search_query && (
+                    <div className={styles.emptySearch}>keine Ausrüstung gefunden...</div>
+                  )}
                 </nav>
               </SortableContext>
             </div>
@@ -475,7 +519,6 @@ export default function Sidebar() {
           </DndContext>
         </div>
         <div className={styles.footerIcons}>
-          {/* Info / Impressum */}
           <button onClick={openImpressum} className={styles.iconButton} title="Impressum">
             <svg className={styles.icon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
@@ -484,7 +527,6 @@ export default function Sidebar() {
             </svg>
           </button>
 
-          {/* Email */}
           <a href="mailto:dev.lindstedt@gmail.com" className={styles.iconButton} title="Kontakt">
             <svg className={styles.icon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
@@ -492,7 +534,6 @@ export default function Sidebar() {
             </svg>
           </a>
 
-          {/* GitHub / Feedback */}
           <a href="https://github.com/AdrianDevelopment/gear-grid/issues/new/choose" target="_blank" rel="noopener noreferrer" className={styles.iconButton} title="Feedback auf GitHub">
             <svg className={styles.icon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
@@ -501,17 +542,15 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Custom Confirmation Modal */}
+      {/* ModalPortal unverändert gelassen (gekürzt für Übersichtlichkeit, aber dein Code bleibt gleich) */}
       {modalConfig && (
         <ModalPortal>
           <div className={styles.modalOverlay} onClick={() => setModalConfig(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-              {/* Ergänzung im ModalPortal Bereich */}
               {modalConfig.type === "impressum" && (
                 <>
                   <h3 className={styles.modalTitle}>Rechtliche Informationen</h3>
                   <div className={styles.modalScrollContent}>
-                    
                     <section className={styles.legalSection}>
                       <h4 className={styles.legalSubHeading}>Impressum</h4>
                       <p className={styles.modalTextSmall}>
@@ -524,7 +563,6 @@ export default function Sidebar() {
                         E-Mail: dev.lindstedt@gmail.com
                       </p>
                     </section>
-
                     <section className={styles.legalSection}>
                       <h4 className={styles.legalSubHeading}>Datenschutz</h4>
                       <p className={styles.modalTextSmall}>
@@ -533,7 +571,6 @@ export default function Sidebar() {
                         Es findet kein Tracking zu Werbezwecken statt.
                       </p>
                     </section>
-
                     <section className={styles.legalSection}>
                       <h4 className={styles.legalSubHeading}>Haftung für Links</h4>
                       <p className={styles.modalTextSmall}>
@@ -542,7 +579,6 @@ export default function Sidebar() {
                       </p>
                     </section>
                   </div>
-
                   <div className={styles.modalButtonsFixed}>
                     <button 
                       className={`${styles.modalButton} ${styles.primaryButton}`} 
@@ -578,10 +614,10 @@ export default function Sidebar() {
                   <div className={styles.modalButtons}>
                     <button 
                       className={`${styles.modalButton} ${styles.confirmDeleteButton}`} 
-                      style={{ background: "#007AFF", boxShadow: "none" }} // Blau statt Rot für Login
+                      style={{ background: "#007AFF", boxShadow: "none" }}
                       onClick={() => {
                         setModalConfig(null);
-                        router.push("/"); // Optional: Direkt zum Login leiten
+                        router.push("/");
                       }}
                     >
                       Verstanden
