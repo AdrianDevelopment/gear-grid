@@ -366,6 +366,24 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const moveCategory = async (id: string, direction: 'up' | 'down') => {
+    const currentIndex = categories.findIndex(c => c.id === id);
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+
+    const newCategories = arrayMove(categories, currentIndex, targetIndex);
+    setCategories(newCategories);
+
+    // Datenbank-Update
+    const updates = newCategories.map((cat, index) => ({
+      ...cat,
+      sort_order: index
+    }));
+
+    await supabase.from("packing_categories").upsert(updates);
+  };
+
   const confirmDeleteCategory = async () => {
     if (!categoryToDelete) return;
     const { error } = await supabase.from("packing_categories").delete().eq("id", categoryToDelete.id);
@@ -557,9 +575,9 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                   formatter={(value, name) => [`${(Number(value) / 1000).toFixed(2)} kg`, name]}
                   contentStyle={{ 
                     borderRadius: '16px', 
-                    border: '1px solid rgba(255,255,255,0.4)', 
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-                    background: 'rgba(255,255,255,0.98)', /* Fast solide für Schärfe */
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04)',
+                    background: 'rgba(28, 28, 30, 0.94)', /* Fast solide für Schärfe */
                     fontWeight: '700',
                     fontSize: '16px',
                     padding: '6px 12px'
@@ -628,13 +646,17 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                         style={{ 
                           color: displayColor,
                           fontSize: '1.6rem',
-                          fontWeight: '800'
+                          lineHeight: '1.2',
+                          fontFamily: 'var(--font-geist-sans)',
+                          fontWeight: '600',
+                          letterSpacing: '0',
+                          margin: '0',
                         }}
                       />
                     ) : (
                       <h2 
                         className={listStyles.categoryTitle} 
-                        style={{ color: displayColor, cursor: 'pointer' }}
+                        style={{ color: displayColor, cursor: 'text' }}
                         onDoubleClick={() => {
                           setEditingCategory(cat.id);
                           setTempCategoryName(cat.name);
@@ -644,7 +666,42 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                       </h2>
                     )}
                     
-                      <div className={listStyles.categoryLine} />
+                    <div className={listStyles.categoryLine} />
+                    <div className={listStyles.arrows}>
+                      <button className={listStyles.arrowUp} onClick={(e) => {
+                        e.stopPropagation();
+                        moveCategory(cat.id, 'up')}}
+                        disabled={index === categories.length - 1}
+                        style={{ cursor: index === 0 ? 'not-allowed' : 'pointer' }}
+                      >
+                        <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path 
+                            d="M10 13L15 8L20 13" 
+                            stroke="currentColor" 
+                            strokeWidth="2.5" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button className={listStyles.arrowDown} onClick={(e) => {
+                        e.stopPropagation();
+                        moveCategory(cat.id, 'down')}}
+                        disabled={index === categories.length - 1}
+                        style={{ cursor: index === categories.length - 1 ? 'not-allowed' : 'pointer' }}
+                      >
+                        <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path 
+                            d="M10 7L15 12L20 7" 
+                            stroke="currentColor" 
+                            strokeWidth="2.5" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+
                     <button className={listStyles.deleteButtonSmall} onClick={() => setCategoryToDelete(cat)}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
