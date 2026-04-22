@@ -346,6 +346,10 @@
 .items .scrollArea {
   max-height: none; /* In der unteren Sektion darf es den Rest füllen */
   flex: 1;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .search {
@@ -354,7 +358,7 @@
   width: 100%;
   gap: 8px;
   padding: 0 12px;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .searchIcon {
