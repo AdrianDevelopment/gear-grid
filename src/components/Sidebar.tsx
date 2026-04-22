@@ -478,7 +478,7 @@ export default function Sidebar() {
             <input
               ref={searchInputRef}
               className={styles.searchInput}
-              placeholder="Suchen..."
+              placeholder="Suchen"
               value={search_query}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchQuery("")} /* Leert das Feld beim Reinklicken */
