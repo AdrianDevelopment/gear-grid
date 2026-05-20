@@ -53,6 +53,9 @@ interface Item {
   price: number;
   category_id: string;
   is_packed: boolean;
+  status: 'open' | 'reserved' | 'checked';
+  reserved_by_id?: string;
+  reserved_by_name?: string;
 }
 
 const CATEGORY_COLORS = [
@@ -136,6 +139,11 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Custom Modal States
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
@@ -184,6 +192,57 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     fetchData();
+
+    // Realtime Abo für Items
+    const itemsChannel = supabase
+      .channel(`list-items-${resolvedParams.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "packing_items",
+          filter: `list_id=eq.${resolvedParams.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setItems((prev) => [...prev, payload.new as Item]);
+          } else if (payload.eventType === "UPDATE") {
+            setItems((prev) => prev.map((i) => (i.id === payload.new.id ? { ...i, ...payload.new } : i)));
+          } else if (payload.eventType === "DELETE") {
+            setItems((prev) => prev.filter((i) => i.id === payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // Realtime Abo für Kategorien
+    const catsChannel = supabase
+      .channel(`list-cats-${resolvedParams.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "packing_categories",
+          filter: `list_id=eq.${resolvedParams.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setCategories((prev) => [...prev, payload.new as Category]);
+          } else if (payload.eventType === "UPDATE") {
+            setCategories((prev) => prev.map((c) => (c.id === payload.new.id ? { ...c, ...payload.new } : c)));
+          } else if (payload.eventType === "DELETE") {
+            setCategories((prev) => prev.filter((c) => c.id === payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(itemsChannel);
+      supabase.removeChannel(catsChannel);
+    };
   }, [resolvedParams.id]);
 
   // Sensoren definieren (Maus & Touch)
@@ -354,7 +413,8 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     if (data) {
-      setCategories([...categories, data]);
+      // Wir setzen den State NICHT manuell, da das Realtime-Abo 
+      // den INSERT bereits abfängt und hinzufügt. Sonst hätten wir Dubletten.
       setNewCategoryName("");
 
       setTimeout(() => {
@@ -422,8 +482,8 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     if (data) {
-      // Funktionaler State-Update garantiert, dass wir auf dem aktuellsten Stand basieren
-      setItems(prevItems => [...prevItems, data]);
+      // Wir setzen den State NICHT manuell, da das Realtime-Abo 
+      // den INSERT bereits abfängt und hinzufügt.
       
       // Inputs zurücksetzen
       setNewItemNames(prev => ({ ...prev, [catId]: "" }));
@@ -436,13 +496,73 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   const togglePacked = async (item: Item) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    const userId = session.user.id;
+    const userInitial = session.user.email?.charAt(0).toUpperCase() || "?";
+
+    // Prüfen, ob die Liste geteilt ist
+    const { data: listData } = await supabase
+      .from("packing_lists")
+      .select("share_code, user_id")
+      .eq("id", resolvedParams.id)
+      .single();
+
+    const isShared = !!listData?.share_code;
+
+    let newStatus: 'open' | 'reserved' | 'checked' = 'open';
+    let newReservedById: string | null = null;
+    let newReservedByName: string | null = null;
+
+    if (!isShared) {
+      // Private Liste: Direkt-Toggle (Open <-> Checked)
+      newStatus = item.status === 'checked' ? 'open' : 'checked';
+      newReservedById = newStatus === 'checked' ? userId : null;
+      newReservedByName = newStatus === 'checked' ? userInitial : null;
+    } else {
+      // Geteilte Liste: 2-Stufen-System
+      if (item.status === 'open') {
+        newStatus = 'reserved';
+        newReservedById = userId;
+        newReservedByName = userInitial;
+      } else if (item.status === 'reserved') {
+        if (item.reserved_by_id === userId) {
+          newStatus = 'checked';
+          newReservedById = userId;
+          newReservedByName = userInitial;
+        } else {
+          return; // Von jemand anderem reserviert
+        }
+      } else if (item.status === 'checked') {
+        newStatus = 'open';
+        newReservedById = null;
+        newReservedByName = null;
+      }
+    }
+
+    // Lokaler State-Update (Optimistic UI)
+    setItems(prev => prev.map(i => i.id === item.id ? { 
+      ...i, 
+      status: newStatus, 
+      reserved_by_id: newReservedById || undefined, 
+      reserved_by_name: newReservedByName || undefined,
+      is_packed: newStatus === 'checked'
+    } : i));
+
     const { error } = await supabase
       .from("packing_items")
-      .update({ is_packed: !item.is_packed })
+      .update({ 
+        status: newStatus, 
+        reserved_by_id: newReservedById, 
+        reserved_by_name: newReservedByName,
+        is_packed: newStatus === 'checked'
+      })
       .eq("id", item.id);
     
-    if (!error) {
-      setItems(items.map(i => i.id === item.id ? { ...i, is_packed: !i.is_packed } : i));
+    if (error) {
+      console.error("Toggle Fehler:", error);
+      fetchData();
     }
   };
 
@@ -511,18 +631,18 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
 
   // Diese Werte werden nur neu berechnet, wenn [items] sich ändert
   const { totalWeight, totalPrice, totalItems, packedItems, progress } = useMemo(() => {
-    console.log("Berechne Zusammenfassung neu..."); // Zum Testen im Browser-Log
+    console.log("Berechne Zusammenfassung neu...");
 
     const weight = items.reduce((sum, i) => sum + (Number(i.weight) * Number(i.count)), 0);
     const price = items.reduce((sum, i) => sum + (Number(i.price) * Number(i.count)), 0);
     const total = items.reduce((sum, i) => sum + Number(i.count), 0);
     const packed = items
-      .filter(i => i.is_packed)
+      .filter(i => i.status === 'checked') // Nur 'checked' zählt als gepackt
       .reduce((sum, i) => sum + Number(i.count), 0);
     const prog = total > 0 ? (packed / total) * 100 : 0;
 
     return { totalWeight: weight, totalPrice: price, totalItems: total, packedItems: packed, progress: prog };
-  }, [items]); // <--- Die Abhängigkeit: Nur wenn items sich ändern
+  }, [items]);
 
   const chartData = useMemo(() => {
     return categories.map((cat, index) => {
@@ -729,15 +849,23 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                       {categoryItems.map(item => (
                         <SortableItem key={item.id} item={item}>
                           <div 
-                            className={`${listStyles.checkbox} ${item.is_packed ? listStyles.checked : ""}`}
+                            className={`
+                              ${listStyles.checkbox} 
+                              ${item.status === 'checked' ? listStyles.checked : ""} 
+                              ${item.status === 'reserved' ? listStyles.reserved : ""}
+                            `}
                             onClick={() => togglePacked(item)}
                           >
-                            {item.is_packed ? "✓" : ""}
+                            {item.status === 'checked' && "✓"}
+                            {item.status === 'reserved' && (
+                              <span className={listStyles.reservedInitial}>{item.reserved_by_name}</span>
+                            )}
                           </div>
                           {/* NAME EDITIEREN */}
                           <div 
-                            className={listStyles.itemName}
+                            className={`${listStyles.itemName} ${item.status === 'checked' ? listStyles.textStrikethrough : ""}`}
                             onDoubleClick={() => {
+                              if (item.status === 'checked') return; // Verhindere Editieren im abgehakten Zustand
                               setEditingCell({ id: item.id, field: "name" });
                               setTempValue(item.name);
                             }}
@@ -945,7 +1073,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
         </div>
-        {typeof window !== "undefined" &&
+        {isMounted &&
           createPortal(
             <DragOverlay zIndex={9999}>
               {activeGear ? (

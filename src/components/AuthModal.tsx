@@ -95,9 +95,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <div className={styles.inputGroup}>
               <div className={styles.passwordHeader}>
                 <label className={styles.label}>Passwort</label>
-                {mode === "login" && (
-                  <button type="button" className={styles.forgotPasswordLink} onClick={() => setMode("reset")}>Vergessen?</button>
-                )}
               </div>
               <div className={styles.passwordWrapper}>
                 <input
@@ -117,6 +114,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
+              {mode === "login" && (
+                <button type="button" className={styles.forgotPasswordLink} onClick={() => setMode("reset")}>Vergessen?</button>
+              )}
             </div>
           )}
 

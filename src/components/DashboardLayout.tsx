@@ -11,21 +11,13 @@ const BackgroundContext = createContext({
 });
 
 export function BackgroundProvider({ children }: { children: ReactNode }) {
-  const [bgImage, setBgImageState] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("selectedBackground") || "/assets/background4.jpg";
-    }
-    return "/assets/background4.jpg";
-  });
+  const [bgImage, setBgImageState] = useState<string>("/assets/background4.jpg");
 
   useEffect(() => {
     // Lade das Hintergrundbild aus dem Local Storage beim Initialisieren
     const storedBg = localStorage.getItem("selectedBgImage");
     if (storedBg) {
       setBgImageState(storedBg);
-    } else {
-      // Setze ein Standardbild, wenn keins im Local Storage gefunden wird
-      setBgImageState("/assets/background4.jpg");
     }
   }, []);
 
