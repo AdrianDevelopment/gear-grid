@@ -28,6 +28,8 @@ import {
 interface Packliste {
   id: string;
   name: string;
+  share_code?: string;
+  user_id: string;
 }
 
 interface GearItem {
@@ -192,10 +194,25 @@ export default function Sidebar() {
   }, [isAdding, editingId]);
 
   const fetchLists = async () => {
-    const { data, error } = await supabase
+    if (!user) return;
+    
+    // Wir holen zuerst alle Listen IDs, bei denen der Nutzer Mitglied ist
+    const { data: memberLists } = await supabase
+      .from("list_members")
+      .select("list_id")
+      .eq("user_id", user.id);
+    
+    const memberIds = memberLists?.map(m => m.list_id) || [];
+
+    // Jetzt holen wir alle Listen, die entweder dem Nutzer gehören 
+    // ODER deren ID in der memberIds Liste steht
+    let query = supabase
       .from("packing_lists")
       .select("*")
+      .or(`user_id.eq.${user.id}${memberIds.length > 0 ? `,id.in.(${memberIds.join(',')})` : ''}`)
       .order("created_at", { ascending: true });
+    
+    const { data, error } = await query;
     
     if (error) {
       console.error("Error fetching lists:", error);
@@ -229,7 +246,15 @@ export default function Sidebar() {
     if (error) {
       console.error("Error creating list:", error);
     } else if (data) {
-      setLists([...lists, data]);
+      // Manueller Update für sofortiges Feedback
+      setLists(prev => {
+        if (prev.find(l => l.id === data.id)) return prev;
+        return [...prev, data];
+      });
+
+      // Navigation zur neuen Liste
+      router.push(`/list/${data.id}`);
+      
       if (lists.length === 0) {
         fetchGearLibrary([data.id]);
       }
@@ -278,14 +303,36 @@ export default function Sidebar() {
     setModalConfig({ type: "impressum" });
   };
 
-  const confirmDelete = async () => {
-    const list = modalConfig?.list;
-    if (!list) return;
-
+  const stopSharing = async (e: React.MouseEvent, list: Packliste) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const { error } = await supabase
       .from("packing_lists")
-      .delete()
+      .update({ share_code: null })
       .eq("id", list.id);
+    
+    if (error) {
+      console.error("Error stopping share:", error);
+    } else {
+      setLists(lists.map(l => l.id === list.id ? { ...l, share_code: undefined } : l));
+    }
+  };
+
+  const confirmDelete = async () => {
+    const list = modalConfig?.list;
+    if (!list || !user) return;
+
+    let error;
+    if (list.user_id === user.id) {
+      // Besitzer löscht die Liste
+      const res = await supabase.from("packing_lists").delete().eq("id", list.id);
+      error = res.error;
+    } else {
+      // Mitglied verlässt die Liste
+      const res = await supabase.from("list_members").delete().eq("list_id", list.id).eq("user_id", user.id);
+      error = res.error;
+    }
 
     if (!error) {
       const newLists = lists.filter((l) => l.id !== list.id);
@@ -347,21 +394,31 @@ export default function Sidebar() {
   };
 
   useEffect(() => {
+    if (!user) return;
+
     const channel = supabase
-      .channel("schema-db-changes")
+      .channel("sidebar-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "packing_items" },
-        () => {
-          fetchGearLibrary();
-        }
+        () => fetchGearLibrary()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "packing_lists" },
+        () => fetchLists()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "list_members", filter: `user_id=eq.${user.id}` },
+        () => fetchLists()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [lists]);
+  }, [user]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveGearId(String(event.active.id));
@@ -427,19 +484,53 @@ export default function Sidebar() {
                     className={`${styles.link} ${isActive ? styles.isActive : ""}`}
                     onDoubleClick={() => startEditing(list)}
                   >
-                    <span className={styles.listName}>{list.name}</span>
-                    <button 
-                      className={styles.deleteButton}
-                      onClick={(e) => openDeleteModal(e, list)}
-                      title="Liste löschen"
-                    >
-                      <svg className={styles.listIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                      </svg>
-                    </button>
+                    <div className={styles.listLinkContent}>
+                      <span className={styles.listName}>{list.name}</span>
+                      {list.share_code && (
+                        <svg className={styles.shareIconSmall} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                          <circle cx="9" cy="7" r="4" />
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className={styles.listActions}>
+                      {list.share_code && list.user_id === user?.id && (
+                        <button 
+                          className={styles.actionButton}
+                          onClick={(e) => stopSharing(e, list)}
+                          title="Teilen beenden"
+                        >
+                          <svg className={styles.listIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                        </button>
+                      )}
+                      <button 
+                        className={styles.deleteButton}
+                        onClick={(e) => openDeleteModal(e, list)}
+                        title={list.user_id === user?.id ? "Liste löschen" : "Liste verlassen"}
+                      >
+                        <svg className={styles.listIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {list.user_id === user?.id ? (
+                            <>
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </>
+                          ) : (
+                            <>
+                              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                              <polyline points="16 17 21 12 16 7" />
+                              <line x1="21" y1="12" x2="9" y2="12" />
+                            </>
+                          )}
+                        </svg>
+                      </button>
+                    </div>
                   </Link>
                 );
               })}
@@ -598,16 +689,21 @@ export default function Sidebar() {
               )}
               {modalConfig.type === "delete" && (
                 <>
-                  <h3 className={styles.modalTitle}>Liste löschen?</h3>
+                  <h3 className={styles.modalTitle}>
+                    {modalConfig.list?.user_id === user?.id ? "Liste löschen?" : "Liste verlassen?"}
+                  </h3>
                   <p className={styles.modalText}>
-                    Bist du sicher, dass du die Liste <strong>"{modalConfig.list?.name}"</strong> unwiderruflich löschen möchtest?
+                    {modalConfig.list?.user_id === user?.id 
+                      ? `Bist du sicher, dass du die Liste "${modalConfig.list?.name}" unwiderruflich löschen möchtest?`
+                      : `Möchtest du die Liste "${modalConfig.list?.name}" wirklich verlassen? Du kannst ihr später nur über einen Code wieder beitreten.`
+                    }
                   </p>
                   <div className={styles.modalButtons}>
                     <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={() => setModalConfig(null)}>
                       Abbrechen
                     </button>
                     <button className={`${styles.modalButton} ${styles.confirmDeleteButton}`} onClick={confirmDelete}>
-                      Löschen
+                      {modalConfig.list?.user_id === user?.id ? "Löschen" : "Verlassen"}
                     </button>
                   </div>
                 </>

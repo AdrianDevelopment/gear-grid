@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { useBackground } from "./DashboardLayout";
 import AuthModal from "./AuthModal";
+import ModalPortal from "./ModalPortal";
 import styles from "../styles/Navbar.module.css";
 import jsPDF from "jspdf";
 import { string } from "zod";
@@ -22,6 +23,10 @@ export default function Navbar() {
   const importRef = useRef<HTMLDivElement>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [shareCode, setShareCode] = useState("");
+  const [joinCode, setJoinCode] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
   const { setBgImage } = useBackground();
@@ -37,6 +42,81 @@ export default function Navbar() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Hilfsfunktion zur Generierung eines 6-stelligen Codes
+  const generateShareCode = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  const handleShareList = async () => {
+    const id = pathname.startsWith("/list/") ? pathname.split("/").pop() : null;
+    if (!id || !user) return;
+
+    // Prüfen, ob bereits ein Code existiert
+    const { data: list } = await supabase
+      .from("packing_lists")
+      .select("share_code")
+      .eq("id", id)
+      .single();
+
+    setShareCode(list?.share_code || generateShareCode());
+    setIsShareModalOpen(true);
+    setIsExportOpen(false);
+  };
+
+  const saveShareCode = async () => {
+    const id = pathname.startsWith("/list/") ? pathname.split("/").pop() : null;
+    if (!id || !user || !shareCode) return;
+
+    const code = shareCode.toUpperCase().trim();
+    if (code.length !== 6) {
+      alert("Der Code muss genau 6 Zeichen lang sein.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("packing_lists")
+      .update({ share_code: code })
+      .eq("id", id);
+    
+    if (error) {
+      if (error.code === "23505") {
+        alert("Dieser Code wird bereits verwendet. Bitte wähle einen anderen.");
+      } else {
+        alert("Fehler beim Speichern: " + error.message);
+      }
+    } else {
+      setIsShareModalOpen(false);
+    }
+  };
+
+  const handleJoinList = async () => {
+    if (!joinCode || !user) return;
+
+    const code = joinCode.toUpperCase().trim();
+    
+    // Wir nutzen die neue RPC Funktion, die RLS umgeht und den Beitritt sicher ausführt
+    const { data: listId, error } = await supabase
+      .rpc('join_list_by_code', { input_code: code });
+
+    if (error) {
+      alert("Fehler beim Beitreten: " + error.message);
+      return;
+    }
+
+    if (listId) {
+      // alert("Erfolgreich beigetreten!");
+      setJoinCode("");
+      setIsJoinModalOpen(false);
+      // Seite hart neuladen oder navigieren, um Sidebar Refresh zu triggern
+      window.location.href = `/list/${listId}`;
+    }
+  };
 
   // Dynamischer Titel basierend auf der aktuellen Liste + Realtime Update
   useEffect(() => {
@@ -420,6 +500,10 @@ export default function Navbar() {
                 <button className={styles.dropdownItem} type="button" onClick={() => fileInputRef.current?.click()}>
                   <span>JSON Datei auswählen</span>
                 </button>
+                <div className={styles.horizontalLine} />
+                <button className={styles.dropdownItem} type="button" onClick={() => setIsJoinModalOpen(true)}>
+                  <span>Geteilter Liste beitreten</span>
+                </button>
               </div>
             )}
           </div>
@@ -443,25 +527,14 @@ export default function Navbar() {
                   type="button"
                   onClick={handleExportPDF}
                 >
-                  {/* <svg 
-                    style={{ width: "16px", height: "16px", marginRight: "8px" }} 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg> */}
                   <span>Als PDF exportieren</span>
                 </button>
                 <button className={styles.dropdownItem} onClick={handleExportJSON}>
                   <span>Als JSON exportieren</span>
+                </button>
+                <div className={styles.horizontalLine} />
+                <button className={styles.dropdownItem} onClick={handleShareList}>
+                  <span>Liste teilen</span>
                 </button>
               </div>
             )}
@@ -560,6 +633,55 @@ export default function Navbar() {
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
       />
+
+      {/* Share Modal */}
+      {isShareModalOpen && (
+        <ModalPortal>
+          <div className={styles.modalOverlay} onClick={() => setIsShareModalOpen(false)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>Liste teilen</h3>
+              <p className={styles.modalText}>Lege einen 6-stelligen Code fest, um diese Liste freizugeben:</p>
+              <input 
+                autoFocus
+                className={styles.modalInput}
+                maxLength={6}
+                value={shareCode}
+                onChange={(e) => setShareCode(e.target.value.toUpperCase())}
+                placeholder="z.B. A79X21"
+                onKeyDown={(e) => e.key === "Enter" && saveShareCode()}
+              />
+              <div className={styles.modalButtons}>
+                <button className={styles.cancelButton} onClick={() => setIsShareModalOpen(false)}>Abbrechen</button>
+                <button className={styles.primaryButton} onClick={saveShareCode}>Freigeben</button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Join Modal */}
+      {isJoinModalOpen && (
+        <ModalPortal>
+          <div className={styles.modalOverlay} onClick={() => setIsJoinModalOpen(false)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>Geteilter Liste beitreten</h3>
+              <p className={styles.modalText}>Gib den 6-stelligen Freigabecode ein:</p>
+              <input 
+                autoFocus
+                className={styles.modalInput}
+                placeholder="z.B. A79X21"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && handleJoinList()}
+              />
+              <div className={styles.modalButtons}>
+                <button className={styles.cancelButton} onClick={() => setIsJoinModalOpen(false)}>Abbrechen</button>
+                <button className={styles.primaryButton} onClick={handleJoinList}>Beitreten</button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
     </>
   );
 }

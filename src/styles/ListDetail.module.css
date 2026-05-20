@@ -275,11 +275,28 @@
   box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
 }
 
+.checkbox.reserved {
+  background: #007AFF;
+  border-color: #007AFF;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+.reservedInitial {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: white;
+}
+
 .itemName {
   font-weight: 700;
   font-size: 1.05rem;
   color: #1d1d1f;
   cursor: text;
+}
+
+.textStrikethrough {
+  text-decoration: line-through;
+  opacity: 0.5;
 }
 
 .itemStat {

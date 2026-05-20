@@ -160,3 +160,102 @@
   from { opacity: 0; transform: translateY(-10px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* Share & Join Modals */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.modal {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  padding: 30px;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  text-align: center;
+}
+
+.modalTitle {
+  margin: 0 0 10px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.modalText {
+  margin: 0 0 20px 0;
+  font-size: 0.95rem;
+  color: #86868b;
+  line-height: 1.4;
+}
+
+.shareCodeDisplay {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 15px;
+  border-radius: 12px;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #007AFF;
+  margin-bottom: 25px;
+  font-family: monospace;
+}
+
+.modalInput {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  font-size: 1.2rem;
+  text-align: center;
+  margin-bottom: 20px;
+  font-family: monospace;
+  text-transform: uppercase;
+  color: #1d1d1f;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.primaryButton {
+  background: #007AFF;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primaryButton:hover {
+  background: #0062cc;
+  transform: translateY(-1px);
+}
+
+.cancelButton {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1d1d1f;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}

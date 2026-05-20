@@ -328,6 +328,46 @@
   transform: scale(1.03);
 }
 
+.listLinkContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.listActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionButton {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #8e8e93;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #007aff;
+}
+
+.shareIconSmall {
+  width: 14px;
+  height: 14px;
+  opacity: 0.5;
+  color: #007AFF;
+  flex-shrink: 0;
+}
+
 .listIcon {
   width: 18px;
   height: 18px;
@@ -340,7 +380,6 @@
   gap: 4px;
   flex: 1;
   min-height: 0; /* Wichtig für flex scroll */
-  cursor: grab;
 }
 
 .items .scrollArea {
@@ -409,7 +448,7 @@
   align-items: center;
   padding: 8px 14px;
   border-radius: 12px;
-  cursor: grabbing;
+  cursor: grab;
   color: rgba(29, 29, 31, 0.8);
   font-weight: 500;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
@@ -421,6 +460,7 @@
   background: rgba(255, 255, 255, 0.2);
   color: #1d1d1f;
   transform: translateX(4px);
+  cursor: grabbing;
 }
 
 .gearItem:active {
