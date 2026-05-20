@@ -640,7 +640,7 @@ export default function Navbar() {
           <div className={styles.modalOverlay} onClick={() => setIsShareModalOpen(false)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h3 className={styles.modalTitle}>Liste teilen</h3>
-              <p className={styles.modalText}>Lege einen 6-stelligen Code fest, um diese Liste freizugeben:</p>
+              <p className={styles.modalText}>Lege einen 6-stelligen Code fest, um diese Liste freizugeben</p>
               <input 
                 autoFocus
                 className={styles.modalInput}
@@ -651,8 +651,8 @@ export default function Navbar() {
                 onKeyDown={(e) => e.key === "Enter" && saveShareCode()}
               />
               <div className={styles.modalButtons}>
-                <button className={styles.cancelButton} onClick={() => setIsShareModalOpen(false)}>Abbrechen</button>
-                <button className={styles.primaryButton} onClick={saveShareCode}>Freigeben</button>
+                <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={() => setIsShareModalOpen(false)}>Abbrechen</button>
+                <button className={`${styles.modalButton} ${styles.primaryButton}`} onClick={saveShareCode}>Freigeben</button>
               </div>
             </div>
           </div>
@@ -675,8 +675,8 @@ export default function Navbar() {
                 onKeyDown={(e) => e.key === "Enter" && handleJoinList()}
               />
               <div className={styles.modalButtons}>
-                <button className={styles.cancelButton} onClick={() => setIsJoinModalOpen(false)}>Abbrechen</button>
-                <button className={styles.primaryButton} onClick={handleJoinList}>Beitreten</button>
+                <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={() => setIsJoinModalOpen(false)}>Abbrechen</button>
+                <button className={`${styles.modalButton} ${styles.primaryButton}`} onClick={handleJoinList}>Beitreten</button>
               </div>
             </div>
           </div>
