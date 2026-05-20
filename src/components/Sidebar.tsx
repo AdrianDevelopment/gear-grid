@@ -105,9 +105,14 @@ export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
   const [gearLibrary, setGearLibrary] = useState<GearItem[]>([]);
   const [activeGearId, setActiveGearId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   
   // Neue States für die Suche
   const [search_query, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   const [modalConfig, setModalConfig] = useState<{
     type: "delete" | "auth" | "impressum";
@@ -508,14 +513,16 @@ export default function Sidebar() {
               </SortableContext>
             </div>
 
-            <DragOverlay>
-              {activeGear ? (
-                <div className={styles.gearItem}>
-                  <span className={styles.gearName}>{activeGear.name}</span>
-                  <span className={styles.gearWeight}>{activeGear.weight}g</span>
-                </div>
-              ) : null}
-            </DragOverlay>
+            {isMounted && (
+              <DragOverlay>
+                {activeGear ? (
+                  <div className={styles.gearItem}>
+                    <span className={styles.gearName}>{activeGear.name}</span>
+                    <span className={styles.gearWeight}>{activeGear.weight}g</span>
+                  </div>
+                ) : null}
+              </DragOverlay>
+            )}
           </DndContext>
         </div>
         <div className={styles.footerIcons}>

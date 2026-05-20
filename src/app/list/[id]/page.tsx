@@ -136,6 +136,11 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Custom Modal States
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
@@ -945,7 +950,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
             </button>
           </div>
         </div>
-        {typeof window !== "undefined" &&
+        {isMounted &&
           createPortal(
             <DragOverlay zIndex={9999}>
               {activeGear ? (
