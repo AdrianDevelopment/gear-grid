@@ -566,7 +566,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           newReservedById = userId;
           newReservedByName = userInitial;
         } else {
-          alert("Dieser Gegenstand wurde von jemand anderem reserviert.");
+          // alert("Dieser Gegenstand wurde von jemand anderem reserviert.");
           return;
         }
       } else if (item.status === 'checked') {
@@ -576,7 +576,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           newReservedById = null;
           newReservedByName = null;
         } else {
-          alert("Dieser Gegenstand wurde von jemand anderem abgehakt.");
+          // alert("Dieser Gegenstand wurde von jemand anderem abgehakt.");
           return;
         }
       }
