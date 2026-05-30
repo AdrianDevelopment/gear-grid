@@ -447,7 +447,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className={styles.sidebar}>
+      <aside className={styles.sidebar} suppressHydrationWarning>
         <div className={styles.listSection}>
           <div className={styles.logo}>Gear Grid</div>
           <div className={styles.title}>Packlisten</div>

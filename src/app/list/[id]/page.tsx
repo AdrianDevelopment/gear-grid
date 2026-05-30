@@ -158,6 +158,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const nameInputRefs = useRef<{ [catId: string]: HTMLInputElement | null }>({});
+  const categoryInputRef = useRef<HTMLInputElement | null>(null);
 
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [tempValue, setTempValue] = useState<string>("");
@@ -416,13 +417,19 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
       // Wir setzen den State NICHT manuell, da das Realtime-Abo 
       // den INSERT bereits abfängt und hinzufügt. Sonst hätten wir Dubletten.
       setNewCategoryName("");
+      
+      // Fokus aus dem Kategorie-Input entfernen
+      if (categoryInputRef.current) {
+        categoryInputRef.current.blur();
+      }
 
       setTimeout(() => {
         const newInputField = nameInputRefs.current[data.id];
         if (newInputField) {
           newInputField.focus();
+          newInputField.select();
         }
-      }, 100)
+      }, 200)
     }
   };
 
@@ -791,7 +798,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                       <button className={listStyles.arrowUp} onClick={(e) => {
                         e.stopPropagation();
                         moveCategory(cat.id, 'up')}}
-                        disabled={index === categories.length - 1}
+                        disabled={index === 0}
                         style={{ cursor: index === 0 ? 'not-allowed' : 'pointer' }}
                       >
                         <svg width="30" height="20" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1054,6 +1061,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           <div className={listStyles.horizontalLine} />
           <div className={listStyles.addCategoryContainer}>
             <input 
+              ref={categoryInputRef}
               className={listStyles.addCategoryInput} 
               placeholder="Neue Kategorie erstellen" 
               value={newCategoryName}
