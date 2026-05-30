@@ -544,15 +544,6 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     const userId = session.user.id;
     const userInitial = await fetchUserInitials(userId);
 
-    // Prüfen, ob die Liste geteilt ist
-    const { data: listData } = await supabase
-      .from("packing_lists")
-      .select("share_code, user_id")
-      .eq("id", resolvedParams.id)
-      .single();
-
-    const isShared = !!listData?.share_code;
-
     let newStatus: 'open' | 'reserved' | 'checked' = 'open';
     let newReservedById: string | null = null;
     let newReservedByName: string | null = null;
@@ -703,6 +694,42 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
       return { name: cat.name, value: weight, color: displayColor };
     }).filter(d => d.value > 0);
   }, [categories, items]); // Berechnen, wenn Kategorien oder Items sich ändern
+
+  const [isShared, setIsShared] = useState(false);
+
+  useEffect(() => {
+    const fetchListInfo = async () => {
+      const { data } = await supabase
+        .from("packing_lists")
+        .select("share_code")
+        .eq("id", resolvedParams.id)
+        .single();
+      setIsShared(!!data?.share_code);
+    };
+    
+    fetchListInfo();
+
+    // Realtime Abo für Listen-Metadaten (z.B. wenn Share-Code dazukommt/entfällt)
+    const listChannel = supabase
+      .channel(`list-meta-${resolvedParams.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "packing_lists",
+          filter: `id=eq.${resolvedParams.id}`,
+        },
+        (payload) => {
+          setIsShared(!!payload.new.share_code);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(listChannel);
+    };
+  }, [resolvedParams.id]);
 
   if (loading || !isAuthorized) return null;
 
@@ -901,14 +928,21 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                           <div 
                             className={`
                               ${listStyles.checkbox} 
-                              ${item.status === 'checked' ? listStyles.checked : ""} 
+                              ${(item.status === 'checked' || item.is_packed) ? listStyles.checked : ""} 
                               ${item.status === 'reserved' ? listStyles.reserved : ""}
                             `}
                             onClick={() => togglePacked(item)}
                           >
-                            {(item.status === 'checked' || item.status === 'reserved') && (
+                            {(item.status === 'checked' || item.is_packed) && (
+                              !isShared ? "✓" : (
+                                <span className={listStyles.reservedInitial}>
+                                  {item.reserved_by_name || "✓"}
+                                </span>
+                              )
+                            )}
+                            {item.status === 'reserved' && (
                               <span className={listStyles.reservedInitial}>
-                                {item.reserved_by_name || "✓"}
+                                {item.reserved_by_name || "R"}
                               </span>
                             )}
                           </div>

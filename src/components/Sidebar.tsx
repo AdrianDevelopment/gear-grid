@@ -346,25 +346,14 @@ export default function Sidebar() {
     setModalConfig(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
-    if (e.key === "Enter") {
-      action();
-    } else if (e.key === "Escape") {
-      if (modalConfig) {
-        setModalConfig(null);
-      } else {
-        setIsAdding(false);
-        setEditingId(null);
-        setTempName("");
-      }
-    }
-  };
-
   const fetchGearLibrary = async (listIds?: string[]) => {
+    // Wenn keine IDs übergeben wurden, nutzen wir die aktuellen Listen aus dem State
     const ids = listIds || lists.map(l => l.id);
 
     if (ids.length === 0) {
-      setGearLibrary([]);
+      // Wenn wir wirklich keine Listen haben, leeren wir die Library
+      // Aber nur, wenn wir nicht gerade beim Initialisieren sind
+      if (user) setGearLibrary([]); 
       return;
     }
 
@@ -401,7 +390,13 @@ export default function Sidebar() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "packing_items" },
-        () => fetchGearLibrary()
+        (payload) => {
+          // Bei Updates (wie abhaken) müssen wir nicht unbedingt die ganze Library neu laden,
+          // es sei denn es ist ein INSERT oder DELETE (neuer Name / gelöschter Name)
+          if (payload.eventType === "INSERT" || payload.eventType === "DELETE") {
+            fetchGearLibrary();
+          }
+        }
       )
       .on(
         "postgres_changes",
