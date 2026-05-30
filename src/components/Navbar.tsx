@@ -36,39 +36,47 @@ export default function Navbar() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserInitials(session.user.id, session.user.email);
+        fetchUserPreferences(session.user.id, session.user.email);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserInitials(session.user.id, session.user.email);
+        fetchUserPreferences(session.user.id, session.user.email);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserInitials = async (userId: string, email?: string) => {
+  const fetchUserPreferences = async (userId: string, email?: string) => {
     try {
       const { data } = await supabase
         .from("user_preferences")
-        .select("user_initials")
+        .select("user_initials, background_url")
         .eq("user_id", userId)
         .single();
       
-      if (data?.user_initials) {
-        setUserInitials(data.user_initials);
-        setInitialsEditValue(data.user_initials);
+      if (data) {
+        if (data.user_initials) {
+          setUserInitials(data.user_initials);
+          setInitialsEditValue(data.user_initials);
+        } else {
+          const defaultInitial = email?.charAt(0).toUpperCase() || "?";
+          setUserInitials(defaultInitial);
+          setInitialsEditValue(defaultInitial);
+        }
+
+        if (data.background_url) {
+          setBgImage(data.background_url);
+        }
       } else {
-        // Fallback: Erster Buchstabe der Email
         const defaultInitial = email?.charAt(0).toUpperCase() || "?";
         setUserInitials(defaultInitial);
         setInitialsEditValue(defaultInitial);
       }
     } catch (error) {
-      // Fallback bei Fehler
       const defaultInitial = email?.charAt(0).toUpperCase() || "?";
       setUserInitials(defaultInitial);
       setInitialsEditValue(defaultInitial);
@@ -94,7 +102,6 @@ export default function Navbar() {
         setUserInitials(trimmedInitials);
         setInitialsEditValue(trimmedInitials);
 
-        // Event auslösen, damit andere Komponenten von der Änderung erfahren
         window.dispatchEvent(new CustomEvent('user-initials-updated', { detail: trimmedInitials }));
       }
     } catch (error) {
@@ -513,8 +520,24 @@ export default function Navbar() {
     reader.readAsText(file);
   };
 
-  const changeBackground = (newUrl: string) => {
+  const changeBackground = async (newUrl: string) => {
     setBgImage(newUrl);
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          background_url: newUrl
+        }, { onConflict: 'user_id' });
+      
+      if (error) {
+        console.error("Fehler beim Speichern des Hintergrunds:", error);
+      }
+    } catch (error) {
+      console.error("Fehler beim Speichern des Hintergrunds:", error);
+    }
   };
 
   return (
