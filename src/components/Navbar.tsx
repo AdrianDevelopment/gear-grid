@@ -8,7 +8,6 @@ import AuthModal from "./AuthModal";
 import ModalPortal from "./ModalPortal";
 import styles from "../styles/Navbar.module.css";
 import jsPDF from "jspdf";
-import { string } from "zod";
 
 export default function Navbar() {
   const router = useRouter();
@@ -27,6 +26,8 @@ export default function Navbar() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [shareCode, setShareCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [userInitials, setUserInitials] = useState<string>("");
+  const [initialsEditValue, setInitialsEditValue] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
   const { setBgImage } = useBackground();
@@ -34,14 +35,72 @@ export default function Navbar() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserInitials(session.user.id, session.user.email);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserInitials(session.user.id, session.user.email);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserInitials = async (userId: string, email?: string) => {
+    try {
+      const { data } = await supabase
+        .from("user_preferences")
+        .select("user_initials")
+        .eq("user_id", userId)
+        .single();
+      
+      if (data?.user_initials) {
+        setUserInitials(data.user_initials);
+        setInitialsEditValue(data.user_initials);
+      } else {
+        // Fallback: Erster Buchstabe der Email
+        const defaultInitial = email?.charAt(0).toUpperCase() || "?";
+        setUserInitials(defaultInitial);
+        setInitialsEditValue(defaultInitial);
+      }
+    } catch (error) {
+      // Fallback bei Fehler
+      const defaultInitial = email?.charAt(0).toUpperCase() || "?";
+      setUserInitials(defaultInitial);
+      setInitialsEditValue(defaultInitial);
+    }
+  };
+
+  const saveUserInitials = async (newInitials: string) => {
+    if (!user) return;
+    
+    const trimmedInitials = newInitials.trim().toUpperCase() || (user.email?.charAt(0).toUpperCase() || "?");
+    
+    try {
+      const { error } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          user_initials: trimmedInitials
+        }, { onConflict: 'user_id' });
+      
+      if (error) {
+        console.error("Fehler beim Speichern der Initialen:", error);
+      } else {
+        setUserInitials(trimmedInitials);
+        setInitialsEditValue(trimmedInitials);
+
+        // Event auslösen, damit andere Komponenten von der Änderung erfahren
+        window.dispatchEvent(new CustomEvent('user-initials-updated', { detail: trimmedInitials }));
+      }
+    } catch (error) {
+      console.error("Fehler beim Speichern der Initialen:", error);
+    }
+  };
 
   // Hilfsfunktion zur Generierung eines 6-stelligen Codes
   const generateShareCode = () => {
@@ -250,16 +309,6 @@ export default function Navbar() {
       pdf.setFontSize(20);
       pdf.text(list?.name || "Packliste", margin, yPosition);
       yPosition += 15;
-
-      // // Datum
-      // pdf.setFontSize(10);
-      // const today = new Date().toLocaleDateString("de-DE", {
-      //   year: "numeric",
-      //   month: "long",
-      //   day: "numeric"
-      // });
-      // pdf.text(today, margin, yPosition);
-      // yPosition += 15;
 
       // Gruppiere Items nach Kategorien
       if (categories && categories.length > 0) {
@@ -546,7 +595,6 @@ export default function Navbar() {
               type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             >
-              {/* Dein bestehendes Settings-SVG */}
               <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -555,7 +603,32 @@ export default function Navbar() {
             {isSettingsOpen && (
               <div className={styles.dropdown}>
                 <div className={styles.userInfo}>
-                  <div className={styles.userEmail}>Einstellungen</div>
+                  <label className={styles.userEmail}>Kürzel für geteilte Listen</label>
+                </div>
+                <div className={styles.horizontalLine} />
+                <div className={styles.initialsSection}>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    className={styles.initialsInput}
+                    value={initialsEditValue}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase();
+                      setInitialsEditValue(val);
+                    }}
+                    onBlur={() => saveUserInitials(initialsEditValue)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        saveUserInitials(initialsEditValue);
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    placeholder="Initialen"
+                  />
+                </div>
+                <div className={styles.horizontalLine} />
+                <div className={styles.userInfo}>
+                  <div className={styles.userEmail}>Hintergrund</div>
                 </div>
                 <div className={styles.horizontalLine} />
                 <button className={styles.dropdownItem} type="button" onClick={() => changeBackground("/assets/background1.jpg")}>
@@ -599,9 +672,6 @@ export default function Navbar() {
                       <div className={styles.userEmail}>{user.email}</div>
                     </div>
                     <div className={styles.verticalLine}></div>
-                    {/* <button className={styles.dropdownItem} type="button">
-                      Profil bearbeiten
-                    </button> */}
                     <div className={styles.horizontalLine} />
                     <button 
                       className={`${styles.dropdownItem} ${styles.logout}`} 

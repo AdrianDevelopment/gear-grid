@@ -73,7 +73,9 @@
   width: 22px;
   height: 22px;
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
   cursor: pointer;
   vertical-align: middle;
   color: #1d1d1f;
@@ -95,7 +97,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   /* box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); */
   border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.04);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -146,7 +150,7 @@
 
 .logout:hover {
   background: rgba(255, 59, 48, 0.15) !important;
-  color: #ff3b30 !important
+  color: #ff3b30 !important;
 }
 
 .horizontalLine {
@@ -156,9 +160,62 @@
   margin: 2px 0;
 }
 
+.initialsSection {
+  display: flex;
+  flex-direction: column;
+  padding-left: 8px;
+  padding-right: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.initialsLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.initialsInput {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  outline: none;
+  transition: all 0.15s ease;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.initialsInput:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.initialsInput:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+.initialsInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Share & Join Modals */
@@ -195,13 +252,23 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modalTitle {
@@ -225,7 +292,7 @@
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: 4px;
-  color: #007AFF;
+  color: #007aff;
   margin-bottom: 25px;
   font-family: monospace;
 }
@@ -276,7 +343,7 @@
 }
 
 .primaryButton {
-  background: #007AFF;
+  background: #007aff;
   color: #fff;
 }
 

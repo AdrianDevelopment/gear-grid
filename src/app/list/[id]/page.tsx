@@ -36,6 +36,8 @@ interface Category {
   id: string;
   name: string;
   color: string;
+  list_id: string;
+  sort_order: number;
 }
 
 interface GearItem {
@@ -51,6 +53,7 @@ interface Item {
   weight: number;
   count: number;
   price: number;
+  list_id: string;
   category_id: string;
   is_packed: boolean;
   status: 'open' | 'reserved' | 'checked';
@@ -156,6 +159,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   const [newItemPrices, setNewItemPrices] = useState<{ [catId: string]: string }>({});
 
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [userInitialsCache, setUserInitialsCache] = useState<{ [userId: string]: string }>({});
 
   const nameInputRefs = useRef<{ [catId: string]: HTMLInputElement | null }>({});
   const categoryInputRef = useRef<HTMLInputElement | null>(null);
@@ -194,6 +198,14 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     fetchData();
 
+    // Listener für Initialen-Updates aus der Navbar
+    const handleInitialsUpdate = (e: any) => {
+      // Cache komplett leeren, damit alles frisch geladen wird
+      setUserInitialsCache({});
+    };
+
+    window.addEventListener('user-initials-updated', handleInitialsUpdate);
+
     // Realtime Abo für Items
     const itemsChannel = supabase
       .channel(`list-items-${resolvedParams.id}`)
@@ -206,12 +218,13 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           filter: `list_id=eq.${resolvedParams.id}`,
         },
         (payload) => {
+          console.log("Realtime Item Event:", payload.eventType, payload);
           if (payload.eventType === "INSERT") {
             setItems((prev) => [...prev, payload.new as Item]);
           } else if (payload.eventType === "UPDATE") {
             setItems((prev) => prev.map((i) => (i.id === payload.new.id ? { ...i, ...payload.new } : i)));
           } else if (payload.eventType === "DELETE") {
-            setItems((prev) => prev.filter((i) => i.id === payload.old.id));
+            setItems((prev) => prev.filter((i) => i.id !== payload.old.id));
           }
         }
       )
@@ -229,12 +242,13 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           filter: `list_id=eq.${resolvedParams.id}`,
         },
         (payload) => {
+          console.log("Realtime Category Event:", payload.eventType, payload);
           if (payload.eventType === "INSERT") {
             setCategories((prev) => [...prev, payload.new as Category]);
           } else if (payload.eventType === "UPDATE") {
             setCategories((prev) => prev.map((c) => (c.id === payload.new.id ? { ...c, ...payload.new } : c)));
           } else if (payload.eventType === "DELETE") {
-            setCategories((prev) => prev.filter((c) => c.id === payload.old.id));
+            setCategories((prev) => prev.filter((c) => c.id !== payload.old.id));
           }
         }
       )
@@ -243,6 +257,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     return () => {
       supabase.removeChannel(itemsChannel);
       supabase.removeChannel(catsChannel);
+      window.removeEventListener('user-initials-updated', handleInitialsUpdate);
     };
   }, [resolvedParams.id]);
 
@@ -323,6 +338,7 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           list_id: resolvedParams.id,
           category_id: targetCategoryId,
           is_packed: false,
+          status: 'open'
         }])
         .select()
         .single();
@@ -339,25 +355,6 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     const overId = over.id;
 
     if (activeId !== overId) {
-      // Finaler State nach dem Drop
-      // setItems((prev) => {
-      //   const activeIndex = prev.findIndex((t) => t.id === activeId);
-      //   const overIndex = prev.findIndex((t) => t.id === overId);
-        
-      //   const newItems = arrayMove(prev, activeIndex, overIndex);
-        
-      //   // --- SUPABASE BATCH UPDATE ---
-      //   // Hier müsstest du idealerweise die neue Reihenfolge an Supabase senden.
-      //   // Ein einfacher Weg ist, das gezogene Item mit der neuen category_id und position zu updaten.
-      //   const movedItem = newItems.find(i => i.id === activeId);
-      //   if (movedItem) {
-      //      supabase.from("packing_items")
-      //        .update({ category_id: movedItem.category_id })
-      //        .eq("id", movedItem.id)
-      //        .then(({ error }) => { if (error) console.error(error) });
-      //   }
-        
-      //   return newItems;
       setItems((prev) => {
         const oldIndex = prev.findIndex((i) => i.id === active.id);
         const newIndex = prev.findIndex((i) => i.id === over.id);
@@ -369,8 +366,6 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
           ...item,
           sort_order: index,
         }));
-
-        console.log("Sende folgende Updates an Supabase:", updates);
 
         // Batch-Update in Supabase (upsert nutzt den Primärschlüssel 'id')
         supabase.from("packing_items").upsert(updates).then(({ error }) => {
@@ -390,8 +385,15 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         supabase.from("packing_items").select("*").eq("list_id", resolvedParams.id).order("sort_order", { ascending: true })
       ]);
 
-      if (catsRes.data) setCategories(catsRes.data);
-      if (itemsRes.data) setItems(itemsRes.data);
+      if (catsRes.error) console.error("Fehler beim Laden der Kategorien:", catsRes.error);
+      if (itemsRes.error) console.error("Fehler beim Laden der Items:", itemsRes.error);
+
+      if (catsRes.data) {
+        setCategories(catsRes.data);
+      }
+      if (itemsRes.data) {
+        setItems(itemsRes.data);
+      }
     } catch (err) {
       console.error("Fehler beim Laden:", err);
     } finally {
@@ -502,12 +504,45 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const fetchUserInitials = async (userId: string): Promise<string> => {
+    // Prüfe Cache zuerst
+    if (userInitialsCache[userId]) {
+      return userInitialsCache[userId];
+    }
+
+    try {
+      // Versuche aus user_preferences zu laden
+      const { data } = await supabase
+        .from("user_preferences")
+        .select("user_initials")
+        .eq("user_id", userId)
+        .single();
+      
+      if (data?.user_initials) {
+        setUserInitialsCache(prev => ({ ...prev, [userId]: data.user_initials }));
+        return data.user_initials;
+      }
+    } catch (error) {
+      console.error("Fehler beim Laden der Initialen:", error);
+    }
+
+    // Fallback: Erster Buchstabe der Email aus Session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.email) {
+      const defaultInitial = session.user.email.charAt(0).toUpperCase();
+      setUserInitialsCache(prev => ({ ...prev, [userId]: defaultInitial }));
+      return defaultInitial;
+    }
+
+    return "?";
+  };
+
   const togglePacked = async (item: Item) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
 
     const userId = session.user.id;
-    const userInitial = session.user.email?.charAt(0).toUpperCase() || "?";
+    const userInitial = await fetchUserInitials(userId);
 
     // Prüfen, ob die Liste geteilt ist
     const { data: listData } = await supabase
@@ -528,23 +563,31 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
       newReservedById = newStatus === 'checked' ? userId : null;
       newReservedByName = newStatus === 'checked' ? userInitial : null;
     } else {
-      // Geteilte Liste: 2-Stufen-System
+      // Geteilte Liste: 2-Stufen-System mit Berechtigungsprüfung
       if (item.status === 'open') {
         newStatus = 'reserved';
         newReservedById = userId;
         newReservedByName = userInitial;
       } else if (item.status === 'reserved') {
+        // Nur wer reserviert hat, darf abhaken oder freigeben
         if (item.reserved_by_id === userId) {
           newStatus = 'checked';
           newReservedById = userId;
           newReservedByName = userInitial;
         } else {
-          return; // Von jemand anderem reserviert
+          alert("Dieser Gegenstand wurde von jemand anderem reserviert.");
+          return;
         }
       } else if (item.status === 'checked') {
-        newStatus = 'open';
-        newReservedById = null;
-        newReservedByName = null;
+        // Nur wer abgehakt hat, darf es wieder öffnen
+        if (item.reserved_by_id === userId) {
+          newStatus = 'open';
+          newReservedById = null;
+          newReservedByName = null;
+        } else {
+          alert("Dieser Gegenstand wurde von jemand anderem abgehakt.");
+          return;
+        }
       }
     }
 
@@ -863,9 +906,10 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
                             `}
                             onClick={() => togglePacked(item)}
                           >
-                            {item.status === 'checked' && "✓"}
-                            {item.status === 'reserved' && (
-                              <span className={listStyles.reservedInitial}>{item.reserved_by_name}</span>
+                            {(item.status === 'checked' || item.status === 'reserved') && (
+                              <span className={listStyles.reservedInitial}>
+                                {item.reserved_by_name || "✓"}
+                              </span>
                             )}
                           </div>
                           {/* NAME EDITIEREN */}
