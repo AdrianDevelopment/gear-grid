@@ -346,6 +346,20 @@ export default function Sidebar() {
     setModalConfig(null);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+    if (e.key === "Enter") {
+      action();
+    } else if (e.key === "Escape") {
+      if (modalConfig) {
+        setModalConfig(null);
+      } else {
+        setIsAdding(false);
+        setEditingId(null);
+        setTempName("");
+      }
+    }
+  };
+
   const fetchGearLibrary = async (listIds?: string[]) => {
     // Wenn keine IDs übergeben wurden, nutzen wir die aktuellen Listen aus dem State
     const ids = listIds || lists.map(l => l.id);
