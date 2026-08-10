@@ -117,7 +117,7 @@ export default function Sidebar() {
   }, []);
   
   const [modalConfig, setModalConfig] = useState<{
-    type: "delete" | "auth" | "impressum";
+    type: "delete" | "auth" | "impressum" | "duplicate";
     list?: Packliste;
   } | null>(null);
   
@@ -126,6 +126,15 @@ export default function Sidebar() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  // States für Duplizieren-Modal
+  const [duplicateCategories, setDuplicateCategories] = useState<any[]>([]);
+  const [duplicateSelected, setDuplicateSelected] = useState<Record<string, boolean>>({});
+  const [duplicateName, setDuplicateName] = useState("");
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const duplicateRunningRef = useRef(false); // verhindert doppelte Ausführung
+
+  const [editPlaceholder, setEditPlaceholder] = useState<string | null>(null); // Placeholder shown when editing a newly created list
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -193,6 +202,14 @@ export default function Sidebar() {
     }
   }, [isAdding, editingId]);
 
+  const dedupeById = (arr: any[]) => {
+    const seen = new Map<string, any>();
+    for (const a of arr) {
+      seen.set(a.id, a);
+    }
+    return Array.from(seen.values());
+  };
+
   const fetchLists = async () => {
     if (!user) return;
     
@@ -217,7 +234,7 @@ export default function Sidebar() {
     if (error) {
       console.error("Error fetching lists:", error);
     } else {
-      const fetchedLists = data || [];
+      const fetchedLists = dedupeById(data || []);
       setLists(fetchedLists);
       if (fetchedLists.length > 0) {
         fetchGearLibrary(fetchedLists.map(l => l.id));
@@ -267,6 +284,7 @@ export default function Sidebar() {
   const startEditing = (list: Packliste) => {
     setEditingId(list.id);
     setTempName(list.name);
+    setEditPlaceholder(null);
   };
 
   const saveRename = async () => {
@@ -277,6 +295,7 @@ export default function Sidebar() {
 
     if (!trimmedName || trimmedName === oldName) {
       setEditingId(null);
+      setEditPlaceholder(null);
       return;
     }
 
@@ -291,6 +310,7 @@ export default function Sidebar() {
       ));
     }
     setEditingId(null);
+    setEditPlaceholder(null);
   };
 
   const openDeleteModal = (e: React.MouseEvent, list: Packliste) => {
@@ -301,6 +321,185 @@ export default function Sidebar() {
 
   const openImpressum = () => {
     setModalConfig({ type: "impressum" });
+  };
+
+  const openDuplicateModal = async (e: React.MouseEvent, list: Packliste) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      setModalConfig({ type: "auth" });
+      return;
+    }
+
+    setModalConfig({ type: "duplicate", list });
+    setDuplicateLoading(true);
+    try {
+      const { data: cats, error } = await supabase
+        .from("packing_categories")
+        .select("id, name, color, sort_order")
+        .eq("list_id", list.id)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching categories for duplicate:", error);
+        setDuplicateCategories([]);
+        setDuplicateSelected({});
+      } else {
+        const categories = (cats || []).map((c: any) => ({ ...c }));
+        setDuplicateCategories(categories);
+        const sel: Record<string, boolean> = {};
+        categories.forEach((c: any) => (sel[c.id] = true));
+        setDuplicateSelected(sel);
+        setDuplicateName("");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setDuplicateLoading(false);
+  };
+
+  const confirmDuplicate = async () => {
+    const list = modalConfig?.list;
+    if (!list || !user) return;
+
+    // Schutz vor mehrfacher Ausführung (z.B. doppelter Klick oder Enter + Klick)
+    if (duplicateRunningRef.current) return;
+    duplicateRunningRef.current = true;
+    // Modal sofort schließen, damit die saubere Schließ-Animation wie bei anderen Popups abgespielt wird
+    setModalConfig(null);
+    setDuplicateLoading(true);
+
+    // Bestimme finalen Namen
+    let finalName = duplicateName.trim();
+    if (!finalName) {
+    // Suche eindeutigen Namen: "{orig} Kopie 1,2,..." — Query DB, um Race-Conditions zu vermeiden
+      const base = `${list.name} Kopie`;
+    try {
+      const { data: existing, error: existingErr } = await supabase
+        .from("packing_lists")
+        .select("name")
+        .ilike("name", `${base}%`);
+
+      if (existingErr) {
+        console.error("Error checking existing names:", existingErr);
+        finalName = `${base} 1`;
+      } else {
+        const names = (existing || []).map((r: any) => r.name);
+        let n = 1;
+        let candidate = `${base} ${n}`;
+        const nameSet = new Set(names);
+        while (nameSet.has(candidate)) {
+          n++;
+          candidate = `${base} ${n}`;
+          if (n > 10000) break;
+        }
+        finalName = candidate;
+      }
+    } catch (err) {
+      console.error(err);
+      finalName = `${base} 1`;
+    }
+    }
+
+    try {
+      // Neue Liste erstellen (privat)
+      const { data: newList, error: listError } = await supabase
+        .from("packing_lists")
+        .insert([{ name: finalName, user_id: user.id, share_code: null }])
+        .select()
+        .single();
+
+      if (listError || !newList) {
+        console.error("Error creating duplicated list:", listError);
+        duplicateRunningRef.current = false;
+        setDuplicateLoading(false);
+        return;
+      }
+
+      // Bestimme selektierte Kategorien
+      const selectedCats = duplicateCategories.filter((c) => duplicateSelected[c.id]);
+
+      // Wenn Kategorien ausgewählt sind, batched einfügen (Categories -> Items)
+      if (selectedCats.length > 0) {
+        // Batch insert categories
+        const catsToInsert = selectedCats.map((c) => ({
+          name: c.name,
+          color: c.color,
+          list_id: newList.id,
+          sort_order: c.sort_order,
+        }));
+
+        const { data: newCats, error: newCatsErr } = await supabase
+          .from("packing_categories")
+          .insert(catsToInsert)
+          .select();
+
+        if (newCatsErr || !newCats) {
+          console.error("Error inserting categories during duplicate:", newCatsErr);
+        } else {
+          // Map old category id -> new category id (assume order preserved)
+          const oldToNewCat: Record<string, string> = {};
+          for (let i = 0; i < selectedCats.length; i++) {
+            const oldId = selectedCats[i].id;
+            const newId = newCats[i]?.id;
+            if (newId) oldToNewCat[oldId] = newId;
+          }
+
+          // Fetch all items for selected old categories in one query
+          const { data: items, error: itemsErr } = await supabase
+            .from("packing_items")
+            .select("id, name, description, weight, count, price, is_packed, status, reserved_by_id, reserved_by_name, category_id")
+            .in("category_id", selectedCats.map((c) => c.id));
+
+          if (itemsErr) {
+            console.error("Error fetching items for categories during duplicate:", itemsErr);
+          } else if (items && items.length > 0) {
+            // Map items to new category ids
+            const inserts = items.map((it: any) => ({
+              name: it.name,
+              description: it.description,
+              weight: it.weight,
+              count: it.count,
+              price: it.price,
+              list_id: newList.id,
+              category_id: oldToNewCat[it.category_id] || null,
+              // Unchecked by default in the duplicated list
+              is_packed: false,
+              // Ensure duplicates are not reserved — set to open
+              status: 'open',
+              reserved_by_id: null,
+              reserved_by_name: null,
+            })).filter((x) => x.category_id !== null);
+
+            if (inserts.length > 0) {
+              const { error: insertErr } = await supabase.from("packing_items").insert(inserts);
+              if (insertErr) console.error("Error inserting duplicated items:", insertErr);
+            }
+          }
+        }
+      }
+
+      // Liste vom Server neu laden (anstatt lokal zu duplizieren) — verhindert Race-Conditions mit Realtime-Events
+      await fetchLists();
+      // Entferne sicherheitshalber eventuell noch vorhandene share_code/Buchstaben für die neue Liste — sie ist privat
+      setLists((prev) => prev.map(l => l.id === newList.id ? { ...l, share_code: undefined } : l));
+
+      // Setze Editing State so that der Input im Sidebar erscheint und fokussiert ist
+      setEditingId(newList.id);
+      setTempName("");
+      setEditPlaceholder(finalName);
+
+      // Navigation zur neuen Liste
+      router.push(`/list/${newList.id}`);
+
+    } catch (err) {
+      console.error(err);
+    }
+
+    duplicateRunningRef.current = false;
+    setDuplicateLoading(false);
+    setModalConfig(null);
   };
 
   const stopSharing = async (e: React.MouseEvent, list: Packliste) => {
@@ -407,7 +606,18 @@ export default function Sidebar() {
         (payload) => {
           // Bei Updates (wie abhaken) müssen wir nicht unbedingt die ganze Library neu laden,
           // es sei denn es ist ein INSERT oder DELETE (neuer Name / gelöschter Name)
-          if (payload.eventType === "INSERT" || payload.eventType === "DELETE") {
+          if (payload.eventType === "INSERT") {
+            // Wenn ein Item für eine Liste eingefügt wurde, stelle sicher, dass
+            // die fetch-Anfrage die entsprechende list_id enthält, auch wenn
+            // die Liste noch nicht im lokalen state ist (z.B. direkt nach Duplizieren).
+            const insertedListId = (payload.new as any)?.list_id;
+            if (insertedListId) {
+              const ids = Array.from(new Set([...(lists || []).map(l => l.id), insertedListId]));
+              fetchGearLibrary(ids);
+              return;
+            }
+            fetchGearLibrary();
+          } else if (payload.eventType === "DELETE") {
             fetchGearLibrary();
           }
         }
@@ -477,22 +687,23 @@ export default function Sidebar() {
                       <input
                         ref={inputRef}
                         className={styles.editInput}
-                        value={tempName}
-                        onChange={(e) => setTempName(e.target.value)}
-                        onBlur={saveRename}
-                        onKeyDown={(e) => handleKeyDown(e, saveRename)}
-                      />
-                    </div>
-                  );
-                }
+                      placeholder={editPlaceholder || undefined}
+                      value={tempName}
+                      onChange={(e) => setTempName(e.target.value)}
+                      onBlur={saveRename}
+                      onKeyDown={(e) => handleKeyDown(e, saveRename)}
+                    />
+                  </div>
+                );
+              }
 
-                return (
-                  <Link
-                    key={list.id}
-                    href={`/list/${list.id}`}
-                    className={`${styles.link} ${isActive ? styles.isActive : ""}`}
-                    onDoubleClick={() => startEditing(list)}
-                  >
+              return (
+                <Link
+                  key={list.id}
+                  href={`/list/${list.id}`}
+                  className={`${styles.link} ${isActive ? styles.isActive : ""}`}
+                  onDoubleClick={() => startEditing(list)}
+                >
                     <div className={styles.listLinkContent}>
                       <span className={styles.listName}>{list.name}</span>
                       {list.share_code && (
@@ -517,6 +728,19 @@ export default function Sidebar() {
                           </svg>
                         </button>
                       )}
+
+                      {/* Duplicate / Kopieren Button */}
+                      <button
+                        className={styles.actionButton}
+                        onClick={(e) => openDuplicateModal(e, list)}
+                        title="Liste duplizieren"
+                      >
+                        <svg className={styles.listIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      </button>
+
                       <button 
                         className={styles.deleteButton}
                         onClick={(e) => openDeleteModal(e, list)}
@@ -696,6 +920,47 @@ export default function Sidebar() {
                   </div>
                 </>
               )}
+
+              {modalConfig.type === "duplicate" && (
+                <>
+                  <h3 className={styles.modalTitle}>Liste duplizieren</h3>
+                  <p className={styles.modalText}>
+                    Wähle die Kategorien aus, die in die neue private Liste kopiert werden sollen. Standardmäßig sind alle ausgewählt.
+                    Der Name kann nach dem Erstellen eingegeben werden.
+                  </p>
+
+                  <div className={styles.modalScrollContent}>
+
+                    {duplicateLoading && <div className={styles.modalTextSmall}>Lade Kategorien...</div>}
+
+                    {!duplicateLoading && duplicateCategories.length === 0 && (
+                      <div className={styles.modalTextSmall}>Keine Kategorien in dieser Liste.</div>
+                    )}
+
+                    {!duplicateLoading && duplicateCategories.map((cat: any) => (
+                      <label key={cat.id} className={styles.dupCategoryRow}>
+                        <input
+                          type="checkbox"
+                          className={styles.dupCheckboxInput}
+                          checked={!!duplicateSelected[cat.id]}
+                          onChange={() => setDuplicateSelected((prev) => ({ ...prev, [cat.id]: !prev[cat.id] }))}
+                        />
+                        <span className={styles.dupCategoryName}>{cat.name}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className={styles.modalButtons}>
+                    <button className={`${styles.modalButton} ${styles.cancelButton}`} onClick={() => setModalConfig(null)} disabled={duplicateLoading}>
+                      Abbrechen
+                    </button>
+                    <button className={`${styles.modalButton} ${styles.primaryButton}`} onClick={confirmDuplicate} disabled={duplicateLoading}>
+                      {duplicateLoading ? 'Kopiere...' : 'Ok'}
+                    </button>
+                  </div>
+                </>
+              )}
+
               {modalConfig.type === "delete" && (
                 <>
                   <h3 className={styles.modalTitle}>

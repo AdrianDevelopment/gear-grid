@@ -220,7 +220,11 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         (payload) => {
           console.log("Realtime Item Event:", payload.eventType, payload);
           if (payload.eventType === "INSERT") {
-            setItems((prev) => [...prev, payload.new as Item]);
+            setItems((prev) => {
+              // Verhindere Duplikate: Nur anhängen, wenn die ID noch nicht vorhanden ist
+              if (prev.find((i) => i.id === payload.new.id)) return prev;
+              return [...prev, payload.new as Item];
+            });
           } else if (payload.eventType === "UPDATE") {
             setItems((prev) => prev.map((i) => (i.id === payload.new.id ? { ...i, ...payload.new } : i)));
           } else if (payload.eventType === "DELETE") {
@@ -244,7 +248,10 @@ export default function ListDetailPage({ params }: { params: Promise<{ id: strin
         (payload) => {
           console.log("Realtime Category Event:", payload.eventType, payload);
           if (payload.eventType === "INSERT") {
-            setCategories((prev) => [...prev, payload.new as Category]);
+            setCategories((prev) => {
+              if (prev.find((c) => c.id === payload.new.id)) return prev;
+              return [...prev, payload.new as Category];
+            });
           } else if (payload.eventType === "UPDATE") {
             setCategories((prev) => prev.map((c) => (c.id === payload.new.id ? { ...c, ...payload.new } : c)));
           } else if (payload.eventType === "DELETE") {
