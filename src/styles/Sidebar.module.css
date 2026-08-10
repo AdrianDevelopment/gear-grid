@@ -237,15 +237,17 @@
   text-align: left;
   max-height: 52vh;
   overflow-y: auto;
+  overflow-x: hidden; /* Verhindert horizontales Scrollen */
   padding-right: 12px;
   margin: 16px 0;
+  box-sizing: border-box;
   /* Maskierung am Ende für weichen Übergang */
   mask-image: linear-gradient(to bottom, black 93%, transparent 100%);
 }
 
 /* Custom Scrollbar im Auth-Style */
 .modalScrollContent::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .modalScrollContent::-webkit-scrollbar-track {
@@ -253,8 +255,74 @@
 }
 
 .modalScrollContent::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
+}
+
+/* Duplicate modal checkbox styling - match ListDetail checkboxes but slightly smaller */
+.dupCategoryRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Match the visual style used in ListDetail.module.css (.checkbox) but a touch smaller */
+.dupCheckboxInput {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px; /* match item checkbox size */
+  height: 24px;
+  border-radius: 9px; /* match ListDetail */
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  background: #fff;
+  color: white;
+  font-weight: 900;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  box-shadow: none; /* avoid large shadow under the box */
+}
+
+/* Checked style: blue like reserved style in ListDetail, but keep shadow modest */
+.dupCheckboxInput:checked {
+  background: #007AFF; /* blue */
+  border-color: #007AFF;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.18); /* subtle shadow */
+}
+
+/* Checkmark: use the same white check glyph, sized to match ListDetail visual */
+.dupCheckboxInput:checked::after {
+  content: "\2713";
+  color: white;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* remove focus outline but keep accessible focus ring via box-shadow on focus */
+.dupCheckboxInput:focus {
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.22);
+}
+
+.dupCategoryName {
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure the modal doesn't create horizontal scrollbar from long content */
+.modal {
+  overflow: visible; /* keep default */
 }
 
 /* Button Anpassungen für Impressum */
